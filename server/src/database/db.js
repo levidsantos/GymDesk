@@ -23,6 +23,14 @@ function getDatabase() {
 
 function initializeDatabase() {
   const database = getDatabase()
+
+  // Importação tardia para evitar dependência circular
+  const { createTables } = require('./schema')
+  const { seedDatabase }  = require('./seed')
+
+  createTables()
+  seedDatabase()
+
   console.log(`Banco de dados inicializado: ${DB_PATH}`)
   return database
 }
