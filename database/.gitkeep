@@ -1,0 +1,2 @@
+# O arquivo .db será gerado automaticamente quando o servidor iniciar pela primeira vez.
+*.db
