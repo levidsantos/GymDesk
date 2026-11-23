@@ -105,7 +105,9 @@ export default function App() {
   }
 
   const { component: Page, breadcrumb } = studentPages[studentPage]
-  const unitColor = account.unit_slug === 'power' ? '#dc2626' : '#eab308'
+  const unitColor = account.unit_slug === 'power'
+    ? 'rgb(var(--color-power))'
+    : 'rgb(var(--color-evolution))'
   return (
     <StudentLayout
       currentPage={studentPage}

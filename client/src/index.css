@@ -4,6 +4,89 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Tema escuro (padrão) ───────────────────────────────────────────────── */
+:root {
+  /* Superfícies */
+  --color-base: 10 10 10;           /* fundo geral da página */
+  --color-card: 17 17 17;           /* fundo de cards, tabelas, sidebar, modais */
+  --color-card-alt: 26 26 26;       /* fundo alternativo: cabeçalho de tabelas, histórico */
+  --color-input: 22 22 22;          /* fundo de inputs e selects */
+
+  /* Interação */
+  --color-hover: 37 37 37;          /* hover de linhas de tabela, itens de menu */
+  --color-active: 46 46 46;         /* item ativo na sidebar, fundo do toggle escuro */
+  --color-border: 42 42 42;         /* bordas de cards, inputs, separadores */
+  --color-border-strong: 68 68 68;  /* bordas em hover/foco de inputs */
+
+  /* Texto */
+  --color-tx-primary: 245 245 245;    /* títulos, nomes, valores principais */
+  --color-tx-secondary: 219 219 219;  /* labels de sidebar, cabeçalhos de tabela */
+  --color-tx-dim: 165 154 137;        /* descrições, subtítulos, valores secundários */
+  --color-tx-muted: 121 121 121;      /* rodapés, dicas, texto desabilitado */
+  --color-tx-on-accent: 235 235 235;  /* texto dentro do botão primário (sobre amarelo) */
+
+  /* Marca — Muscle Evolution (amarelo) */
+  --color-evolution: 240 164 15;                   /* botão primário, ícone do logo, indicador ativo, labels de unidade */
+  --color-evolution-hover: 221 151 4;             /* hover do botão primário rgb(221,151,4) */
+  --color-evolution-muted: rgba(255, 192, 4, 0.13);  /* fundo de badges Evolution, paginação */
+  --color-evolution-border: rgba(255, 191, 0, 0.251);  /* borda de badges Evolution, paginação */
+
+  /* Marca — Muscle Power (vermelho) */
+  --color-power: 220 38 38;                       /* labels de unidade Power */
+  --color-power-hover: 185 28 28;                 /* hover de elementos Power */
+  --color-power-muted: rgb(220 38 38 / 0.094);    /* fundo de badges Power */
+  --color-power-border: rgb(220 38 38 / 0.251);   /* borda de badges Power */
+
+  /* Semânticas — status e feedback */
+  --color-success: 34 197 94;    /* badges "Pago", alertas de sucesso */
+  --color-warning: 245 158 11;   /* badges "Em aberto", alertas de aviso */
+  --color-danger: 239 68 68;     /* badges "Em atraso", alertas de erro, botão excluir */
+  --color-info: 59 130 246;      /* alertas informativos */
+
+  /* Scrollbar */
+  --color-scrollbar: #2a2a2a;
+  --color-scrollbar-hover: #3a3a3a;
+}
+
+/* ── Tema claro ─────────────────────────────────────────────────────────── */
+:root.light {
+  --color-base: 244 244 245;           /* fundo geral da página */
+  --color-card: 255 255 255;           /* fundo de cards, tabelas, sidebar, modais */
+  --color-card-alt: 248 248 249;       /* fundo alternativo: cabeçalho de tabelas, histórico */
+  --color-input: 255 255 255;          /* fundo de inputs e selects */
+
+  --color-hover: 234 234 236;          /* hover de linhas de tabela, itens de menu */
+  --color-active: 224 224 226;         /* item ativo na sidebar */
+  --color-border: 212 212 216;         /* bordas de cards, inputs, separadores */
+  --color-border-strong: 161 161 170;  /* bordas em hover/foco de inputs */
+
+  --color-tx-primary: 24 24 27;        /* títulos, nomes, valores principais */
+  --color-tx-secondary: 63 63 70;      /* labels de sidebar, cabeçalhos de tabela */
+  --color-tx-dim: 107 94 80;           /* descrições, subtítulos, valores secundários */
+  --color-tx-muted: 113 113 122;       /* rodapés, dicas, texto desabilitado */
+  --color-tx-on-accent: 255 255 255;   /* texto dentro do botão primário (sobre amarelo) */
+
+  --color-evolution: 240 164 15;                    /* botão primário, ícone do logo, indicador ativo, labels de unidade */
+  --color-evolution-hover: 221 151 4;               /* hover do botão primário */
+  --color-evolution-muted: rgba(255, 174, 0, 0.178);    /* fundo de badges Evolution, paginação */
+  --color-evolution-border: rgba(255, 174, 0, 0.3);    /* borda de badges Evolution, paginação */
+
+  --color-power: 220 38 38;                        /* labels de unidade Power */
+  --color-power-hover: 185 28 28;                  /* hover de elementos Power */
+  --color-power-muted: rgb(220 38 38 / 0.08);      /* fundo de badges Power */
+  --color-power-border: rgb(220 38 38 / 0.2);      /* borda de badges Power */
+
+  --color-success: 22 163 74;    /* badges "Pago", alertas de sucesso */
+  --color-warning: 217 119 6;    /* badges "Em aberto", alertas de aviso */
+  --color-danger: 239 68 68;     /* badges "Em atraso", alertas de erro, botão excluir */
+  --color-info: 37 99 235;       /* alertas informativos */
+
+  --color-scrollbar: #d4d4d8;
+  --color-scrollbar-hover: #a1a1aa;
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -12,8 +95,8 @@
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: #0a0a0a;
-  color: #f5f5f5;
+  background-color: rgb(var(--color-base));
+  color: rgb(var(--color-tx-primary));
   min-height: 100vh;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
@@ -22,5 +105,5 @@ body {
 /* Scrollbar discreta */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+::-webkit-scrollbar-thumb { background: var(--color-scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-scrollbar-hover); }

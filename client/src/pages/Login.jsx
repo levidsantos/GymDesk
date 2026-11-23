@@ -3,6 +3,7 @@ import { Dumbbell, Eye, EyeOff } from 'lucide-react'
 import { Input, InputField } from '../components/Input'
 import Button from '../components/Button'
 import Alert from '../components/Alert'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function Login({ onLogin }) {
   const [email, setEmail]       = useState('')
@@ -41,10 +42,13 @@ export default function Login({ onLogin }) {
           <Dumbbell size={20} className="text-evolution" />
           <span className="font-bold text-tx-primary tracking-tight">GymDesk</span>
         </div>
-        <div className="hidden sm:flex items-center gap-4 text-sm text-tx-muted">
-          <span>Muscle Power</span>
-          <span className="text-border">·</span>
-          <span>Muscle Evolution</span>
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-4 text-sm text-tx-muted">
+            <span>Muscle Power</span>
+            <span className="text-border">·</span>
+            <span>Muscle Evolution</span>
+          </div>
+          <ThemeToggle />
         </div>
       </header>
 
