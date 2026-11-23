@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { apiFetch } from './lib/api'
 
 import Login from './pages/Login'
 import ChangePassword from './pages/ChangePassword'
@@ -31,17 +32,6 @@ function todayBR() {
   return new Date().toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'long', year: 'numeric',
   })
-}
-
-async function apiFetch(path, options = {}) {
-  const res = await fetch(`/api${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Erro na requisição.')
-  return data
 }
 
 export default function App() {

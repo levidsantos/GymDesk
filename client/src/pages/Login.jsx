@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Dumbbell, Eye, EyeOff } from 'lucide-react'
+import { apiFetch } from '../lib/api'
+import { IS_DEMO } from '../demo/index.js'
 import { Input, InputField } from '../components/Input'
 import Button from '../components/Button'
 import Alert from '../components/Alert'
@@ -18,14 +20,10 @@ export default function Login({ onLogin }) {
     setLoading(true)
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const data = await apiFetch('/auth/login', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erro ao fazer login.')
       onLogin?.(data.account)
     } catch (err) {
       setError(err.message)
@@ -106,6 +104,18 @@ export default function Login({ onLogin }) {
                 {loading ? 'Entrando...' : 'Entrar'}
               </Button>
             </form>
+
+            {IS_DEMO && (
+              <div className="mt-6 pt-5 border-t border-border">
+                <p className="text-xs font-medium text-evolution mb-2">Credenciais de demonstração</p>
+                <div className="space-y-1 text-xs text-tx-dim">
+                  <p><span className="text-tx-muted">Admin:</span> admin@email.com / admin123</p>
+                  <p><span className="text-tx-muted">Aluno (em dia):</span> lucas.ferreira@email.com / senha123</p>
+                  <p><span className="text-tx-muted">Aluno (em atraso):</span> rafael.mendes@email.com / senha123</p>
+                  <p><span className="text-tx-muted">Primeiro acesso:</span> mariana.lopes@email.com / senha123</p>
+                </div>
+              </div>
+            )}
 
             <div className="mt-7 pt-6 border-t border-border">
               <p className="text-xs text-tx-muted">

@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react'
+import { apiFetch } from '../../lib/api'
 import StatCard from '../../components/StatCard'
 import Badge from '../../components/Badge'
 import Alert from '../../components/Alert'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/Table'
-
-async function apiFetch(path) {
-  const res = await fetch(`/api${path}`, { credentials: 'include' })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Erro na requisição.')
-  return data
-}
 
 function fmtDate(iso) {
   if (!iso) return '—'

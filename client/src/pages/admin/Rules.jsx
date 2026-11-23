@@ -1,16 +1,10 @@
 import { useState } from 'react'
+import { apiFetch } from '../../lib/api'
 import { Input, InputField, Select } from '../../components/Input'
 import Button from '../../components/Button'
 import Badge from '../../components/Badge'
 import Alert from '../../components/Alert'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/Table'
-
-async function apiFetch(path) {
-  const res  = await fetch(`/api${path}`, { credentials: 'include' })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Erro na requisição.')
-  return data
-}
 
 const accessRules = [
   { plan: 'Qualquer plano', origin: 'Muscle Power',     power: 'Permitido',      evolution: 'Domingos apenas' },
