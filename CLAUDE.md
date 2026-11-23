@@ -132,10 +132,15 @@ Evite adicionar funcionalidades que não foram solicitadas.
 ## 7. Estado atual do desenvolvimento
 
 - Etapa 1: estrutura inicial do projeto, frontend, backend e conexão SQLite — concluída.
-- Etapa 2: identidade visual, componentes reutilizáveis, layouts e páginas demonstrativas — implementada, em revisão.
-- Próxima etapa: revisão e correções da implementação atual antes de iniciar a estrutura definitiva do banco de dados e das funcionalidades.
-
-As páginas atuais ainda utilizam dados demonstrativos. Não considere esses dados como registros reais ou como fonte definitiva das regras de negócio.
+- Etapa 2: identidade visual, componentes reutilizáveis, layouts e páginas — concluída.
+- Etapa 3: banco de dados, backend e funcionalidades principais — concluída.
+  - Schema SQLite (8 tabelas), seeds de unidades, planos e admin.
+  - CRUD de alunos, matrículas, mensalidades, pagamentos e regras de acesso.
+  - Autenticação com sessões HTTP-only, middleware por perfil, troca de senha obrigatória.
+  - Portal do aluno e dashboard administrativo conectados a dados reais.
+  - Inativação de aluno inativa automaticamente a matrícula ativa.
+  - Matrículas expiradas são encerradas automaticamente nas consultas.
+- Próxima etapa: refinamentos de interface e validação integrada.
 
 ## 8. Orientações para alterações
 

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 import Login from './pages/Login'
+import ChangePassword from './pages/ChangePassword'
 
 import AdminLayout  from './components/AdminLayout'
 import Dashboard    from './pages/admin/Dashboard'
@@ -13,40 +14,17 @@ import StudentHome    from './pages/student/Home'
 import StudentFinance from './pages/student/Finance'
 import StudentRules   from './pages/student/Rules'
 
-// Página e breadcrumb por rota — admin
 const adminPages = {
-  dashboard: {
-    component: Dashboard,
-    breadcrumb: 'Gestão das duas unidades / Painel administrativo',
-  },
-  students: {
-    component: Students,
-    breadcrumb: 'Gestão das duas unidades / Alunos e matrículas',
-  },
-  payments: {
-    component: Payments,
-    breadcrumb: 'Gestão das duas unidades / Mensalidades',
-  },
-  rules: {
-    component: Rules,
-    breadcrumb: 'Gestão das duas unidades / Regras de acesso',
-  },
+  dashboard: { component: Dashboard, breadcrumb: 'Gestão das duas unidades / Painel administrativo' },
+  students:  { component: Students,  breadcrumb: 'Gestão das duas unidades / Alunos e matrículas'  },
+  payments:  { component: Payments,  breadcrumb: 'Gestão das duas unidades / Mensalidades'         },
+  rules:     { component: Rules,     breadcrumb: 'Gestão das duas unidades / Regras de acesso'     },
 }
 
-// Página e breadcrumb por rota — aluno
 const studentPages = {
-  home: {
-    component: StudentHome,
-    breadcrumb: 'Portal do aluno / Página inicial',
-  },
-  finance: {
-    component: StudentFinance,
-    breadcrumb: 'Portal do aluno / Situação financeira',
-  },
-  rules: {
-    component: StudentRules,
-    breadcrumb: 'Portal do aluno / Regras de acesso',
-  },
+  home:    { component: StudentHome,    breadcrumb: 'Portal do aluno / Página inicial'       },
+  finance: { component: StudentFinance, breadcrumb: 'Portal do aluno / Situação financeira'  },
+  rules:   { component: StudentRules,   breadcrumb: 'Portal do aluno / Regras de acesso'     },
 }
 
 function todayBR() {
@@ -55,18 +33,62 @@ function todayBR() {
   })
 }
 
+async function apiFetch(path, options = {}) {
+  const res = await fetch(`/api${path}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Erro na requisição.')
+  return data
+}
+
 export default function App() {
-  const [role, setRole]         = useState(null)   // null | 'admin' | 'student'
+  const [account, setAccount]       = useState(null)
+  const [loading, setLoading]       = useState(true)
   const [adminPage, setAdminPage]   = useState('dashboard')
   const [studentPage, setStudentPage] = useState('home')
 
-  // — Login —
-  if (!role) {
-    return <Login onLogin={(r) => setRole(r)} />
+  useEffect(() => {
+    apiFetch('/auth/me')
+      .then(data => setAccount(data.account))
+      .catch(() => setAccount(null))
+      .finally(() => setLoading(false))
+  }, [])
+
+  function handleLogin(acc) {
+    setAccount(acc)
   }
 
-  // — Área administrativa —
-  if (role === 'admin') {
+  async function handleLogout() {
+    try { await apiFetch('/auth/logout', { method: 'POST' }) } catch {}
+    setAccount(null)
+    setAdminPage('dashboard')
+    setStudentPage('home')
+  }
+
+  function handlePasswordChanged() {
+    setAccount(prev => ({ ...prev, must_change_password: false }))
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-base flex items-center justify-center">
+        <p className="text-tx-muted text-sm">Carregando...</p>
+      </div>
+    )
+  }
+
+  if (!account) {
+    return <Login onLogin={handleLogin} />
+  }
+
+  if (account.must_change_password) {
+    return <ChangePassword onSuccess={handlePasswordChanged} onLogout={handleLogout} />
+  }
+
+  if (account.role === 'admin') {
     const { component: Page, breadcrumb } = adminPages[adminPage]
     return (
       <AdminLayout
@@ -74,23 +96,26 @@ export default function App() {
         onNavigate={setAdminPage}
         breadcrumb={breadcrumb}
         date={todayBR()}
+        accountName={account.email}
+        onLogout={handleLogout}
       >
         <Page />
       </AdminLayout>
     )
   }
 
-  // — Área do aluno —
   const { component: Page, breadcrumb } = studentPages[studentPage]
+  const unitColor = account.unit_slug === 'power' ? '#dc2626' : '#eab308'
   return (
     <StudentLayout
       currentPage={studentPage}
       onNavigate={setStudentPage}
       breadcrumb={breadcrumb}
       date={todayBR()}
-      studentName="Lucas Ferreira"
-      enrollment="Matrícula GD-0043"
-      accentColor="#dc2626"   // Power = vermelho
+      studentName={account.student_name || 'Aluno'}
+      enrollment=""
+      accentColor={unitColor}
+      onLogout={handleLogout}
     >
       <Page onNavigate={setStudentPage} />
     </StudentLayout>

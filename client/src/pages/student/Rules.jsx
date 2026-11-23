@@ -1,7 +1,52 @@
+import { useState, useEffect } from 'react'
 import Badge from '../../components/Badge'
+import Alert from '../../components/Alert'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/Table'
 
+async function apiFetch(path) {
+  const res = await fetch(`/api${path}`, { credentials: 'include' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Erro na requisição.')
+  return data
+}
+
+function fmtPrice(v) {
+  return v?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—'
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
 export default function StudentRules() {
+  const [data, setData]       = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState('')
+
+  useEffect(() => {
+    apiFetch('/portal/access')
+      .then(d => setData(d))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return <p className="text-sm text-tx-muted py-8 text-center">Carregando...</p>
+  }
+  if (error) {
+    return <Alert variant="danger">{error}</Alert>
+  }
+
+  const { student, enrollment, overdue_count, next_pending_due, access } = data
+
+  if (!student) {
+    return <Alert variant="warning">Conta não vinculada a um cadastro de aluno.</Alert>
+  }
+
+  const isPower = enrollment?.unit_slug === 'power'
+
   return (
     <div>
       <div className="mb-7">
@@ -14,23 +59,42 @@ export default function StudentRules() {
       {/* Suas condições */}
       <div className="bg-card border border-border rounded-lg p-6 mb-5">
         <h2 className="text-base font-semibold text-tx-primary mb-4">Suas condições de acesso</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <p className="text-xs text-tx-muted uppercase tracking-wide mb-1">Plano contratado</p>
-            <p className="font-semibold text-tx-primary">Semestral · R$ 55,00/mês</p>
-          </div>
-          <div>
-            <p className="text-xs text-tx-muted uppercase tracking-wide mb-1">Matrícula</p>
-            <Badge variant="success">Ativa</Badge>
-          </div>
-          <div>
-            <p className="text-xs text-tx-muted uppercase tracking-wide mb-1">Mensalidades vencidas</p>
-            <p className="font-semibold text-success">Nenhuma</p>
-          </div>
-        </div>
-        <p className="text-xs text-tx-muted mt-4">
-          A próxima mensalidade vence em 20/12/2026 e não impede o acesso antes do vencimento.
-        </p>
+
+        {!enrollment ? (
+          <p className="text-sm text-tx-muted">
+            Você não possui matrícula ativa. O acesso às unidades requer matrícula ativa e situação financeira regular.
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-tx-muted uppercase tracking-wide mb-1">Plano contratado</p>
+                <p className="font-semibold text-tx-primary">
+                  {enrollment.plan_name} · {fmtPrice(enrollment.plan_monthly_price)}/mês
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-tx-muted uppercase tracking-wide mb-1">Matrícula</p>
+                <Badge variant="success">Ativa</Badge>
+              </div>
+              <div>
+                <p className="text-xs text-tx-muted uppercase tracking-wide mb-1">Mensalidades vencidas</p>
+                {overdue_count > 0 ? (
+                  <p className="font-semibold text-danger">
+                    {overdue_count} mensalidade{overdue_count > 1 ? 's' : ''}
+                  </p>
+                ) : (
+                  <p className="font-semibold text-success">Nenhuma</p>
+                )}
+              </div>
+            </div>
+            {next_pending_due && overdue_count === 0 && (
+              <p className="text-xs text-tx-muted mt-4">
+                A próxima mensalidade vence em {fmtDate(next_pending_due)} e não impede o acesso antes do vencimento.
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       {/* Cards das unidades */}
@@ -39,9 +103,22 @@ export default function StudentRules() {
         <div className="bg-card border border-border rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-power">Muscle Power</h2>
-            <Badge variant="success">Acesso permitido</Badge>
+            {access ? (
+              <Badge variant={access.power.allowed ? 'success' : 'danger'}>
+                {access.power.allowed ? 'Acesso permitido' : 'Sem acesso'}
+              </Badge>
+            ) : (
+              <Badge variant="neutral">Sem matrícula</Badge>
+            )}
           </div>
-          <p className="text-sm text-tx-dim mb-4">Sua unidade de origem.</p>
+          <p className="text-sm text-tx-dim mb-4">
+            {!enrollment
+              ? 'Requer matrícula ativa.'
+              : isPower
+                ? 'Sua unidade de origem.'
+                : 'Acesso incluído no seu plano Muscle Evolution.'
+            }
+          </p>
           <div className="border-t border-border pt-4">
             <p className="text-xs font-medium text-tx-dim uppercase tracking-wide mb-2">
               Horário de funcionamento
@@ -58,11 +135,27 @@ export default function StudentRules() {
         <div className="bg-card border border-border rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-evolution">Muscle Evolution</h2>
-            <Badge variant="warning">Somente aos domingos</Badge>
+            {access ? (
+              isPower ? (
+                <Badge variant={access.evolution.allowed ? 'success' : 'warning'}>
+                  {access.evolution.allowed ? 'Acesso permitido' : 'Somente aos domingos'}
+                </Badge>
+              ) : (
+                <Badge variant={access.evolution.allowed ? 'success' : 'danger'}>
+                  {access.evolution.allowed ? 'Acesso permitido' : 'Sem acesso'}
+                </Badge>
+              )
+            ) : (
+              <Badge variant="neutral">Sem matrícula</Badge>
+            )}
           </div>
           <p className="text-sm text-tx-dim mb-4">
-            Alunos da Muscle Power podem utilizar a Muscle Evolution somente aos domingos,
-            durante o horário de funcionamento.
+            {!enrollment
+              ? 'Requer matrícula ativa.'
+              : isPower
+                ? 'Alunos da Muscle Power podem utilizar a Muscle Evolution somente aos domingos, durante o horário de funcionamento.'
+                : 'Sua unidade de origem.'
+            }
           </p>
           <div className="border-t border-border pt-4">
             <p className="text-xs font-medium text-tx-dim uppercase tracking-wide mb-2">

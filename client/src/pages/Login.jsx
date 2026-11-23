@@ -9,18 +9,27 @@ export default function Login({ onLogin }) {
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setLoading(true)
 
-    // Demonstrativo: credenciais fixas
-    if (email === 'admin@email.com' && password === 'admin123') {
-      onLogin?.('admin')
-    } else if (email === 'aluno@email.com' && password === 'aluno123') {
-      onLogin?.('student')
-    } else {
-      setError('E-mail ou senha incorretos. Confira os dados e tente novamente.')
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erro ao fazer login.')
+      onLogin?.(data.account)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -89,14 +98,14 @@ export default function Login({ onLogin }) {
                 </div>
               </InputField>
 
-              <Button type="submit" size="lg" className="mt-1 w-full">
-                Entrar
+              <Button type="submit" size="lg" className="mt-1 w-full" disabled={loading}>
+                {loading ? 'Entrando...' : 'Entrar'}
               </Button>
             </form>
 
             <div className="mt-7 pt-6 border-t border-border">
               <p className="text-xs text-tx-muted">
-                O acesso à área administrativa ou do aluno é definido pelo perfil da sua conta.
+                Esqueceu a senha? Procure a recepção da sua unidade para redefinir o acesso.
               </p>
             </div>
           </div>
@@ -105,13 +114,6 @@ export default function Login({ onLogin }) {
           <p className="text-center text-xs text-tx-muted mt-5">
             Precisa de acesso? Procure a recepção da sua unidade.
           </p>
-
-          {/* Dica demonstrativa */}
-          <div className="mt-6 bg-card-alt border border-border rounded-lg p-4 text-xs text-tx-muted">
-            <p className="font-medium text-tx-dim mb-2">Acesso demonstrativo</p>
-            <p>Admin: <span className="text-tx-primary">admin@email.com</span> / <span className="text-tx-primary">admin123</span></p>
-            <p>Aluno: <span className="text-tx-primary">aluno@email.com</span> / <span className="text-tx-primary">aluno123</span></p>
-          </div>
         </div>
       </div>
 

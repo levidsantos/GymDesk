@@ -23,8 +23,25 @@ function getDatabase() {
 
 function initializeDatabase() {
   const database = getDatabase()
+
+  // Importação tardia para evitar dependência circular
+  const { createTables } = require('./schema')
+  const { seedDatabase }  = require('./seed')
+
+  createTables()
+  seedDatabase()
+
   console.log(`Banco de dados inicializado: ${DB_PATH}`)
   return database
 }
 
-module.exports = { getDatabase, initializeDatabase }
+function expireMaturedEnrollments() {
+  const database = getDatabase()
+  const today = new Date().toISOString().slice(0, 10)
+  database.prepare(`
+    UPDATE enrollments SET status = 'inactive', inactivated_at = datetime('now')
+    WHERE status = 'active' AND end_date < ?
+  `).run(today)
+}
+
+module.exports = { getDatabase, initializeDatabase, expireMaturedEnrollments }

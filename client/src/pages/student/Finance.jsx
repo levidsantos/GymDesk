@@ -1,108 +1,146 @@
+import { useState, useEffect } from 'react'
 import Badge from '../../components/Badge'
 import StatCard from '../../components/StatCard'
+import Alert from '../../components/Alert'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/Table'
-import { Select } from '../../components/Input'
 
-// Lucas Ferreira · Muscle Power · Plano Semestral · R$ 55/mês · desde 20/06/2026
-// Vencimento todo dia 20. Nov/2026 pago em 19/11. Dez/2026 em aberto (vence 20/12).
-const payments = [
-  { month: 'Dez/2026', due: '20/12/2026', value: 'R$ 55,00', status: 'Em aberto', paidAt: null         },
-  { month: 'Nov/2026', due: '20/11/2026', value: 'R$ 55,00', status: 'Pago',      paidAt: '19/11/2026' },
-  { month: 'Out/2026', due: '20/10/2026', value: 'R$ 55,00', status: 'Pago',      paidAt: '18/10/2026' },
-  { month: 'Set/2026', due: '20/09/2026', value: 'R$ 55,00', status: 'Pago',      paidAt: '20/09/2026' },
-  { month: 'Ago/2026', due: '20/08/2026', value: 'R$ 55,00', status: 'Pago',      paidAt: '19/08/2026' },
-  { month: 'Jul/2026', due: '20/07/2026', value: 'R$ 55,00', status: 'Pago',      paidAt: '20/07/2026' },
-]
+async function apiFetch(path) {
+  const res = await fetch(`/api${path}`, { credentials: 'include' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Erro na requisição.')
+  return data
+}
 
-const history = [
-  { paidAt: '19/11/2026', month: 'Nov/2026', value: 'R$ 55,00', method: 'Pix'                },
-  { paidAt: '18/10/2026', month: 'Out/2026', value: 'R$ 55,00', method: 'Dinheiro'           },
-  { paidAt: '20/09/2026', month: 'Set/2026', value: 'R$ 55,00', method: 'Cartão na recepção' },
-  { paidAt: '19/08/2026', month: 'Ago/2026', value: 'R$ 55,00', method: 'Dinheiro'           },
-  { paidAt: '20/07/2026', month: 'Jul/2026', value: 'R$ 55,00', method: 'Pix'                },
-]
+function fmtDate(iso) {
+  if (!iso) return '—'
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
+function fmtPrice(v) {
+  return v?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'
+}
+
+function fmtCompetence(comp) {
+  if (!comp) return '—'
+  const [y, m] = comp.split('-')
+  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+  return `${months[parseInt(m) - 1]}/${y}`
+}
+
+function installmentBadge(inst) {
+  if (inst.status === 'paid') return { variant: 'success', label: 'Pago' }
+  if (inst.status === 'cancelled') return { variant: 'neutral', label: 'Cancelada' }
+  if (inst.is_overdue) return { variant: 'danger', label: 'Em atraso' }
+  return { variant: 'warning', label: 'Em aberto' }
+}
 
 export default function StudentFinance() {
+  const [data, setData]       = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState('')
+
+  useEffect(() => {
+    apiFetch('/portal/finance')
+      .then(d => setData(d))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return <p className="text-sm text-tx-muted py-8 text-center">Carregando...</p>
+  }
+  if (error) {
+    return <Alert variant="danger">{error}</Alert>
+  }
+
+  const { student, installments, payments } = data
+
+  if (!student) {
+    return <Alert variant="warning">Conta não vinculada a um cadastro de aluno.</Alert>
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+  const pending = installments.filter(i => i.status === 'pending' && !i.is_overdue)
+  const overdue = installments.filter(i => i.is_overdue)
+  const pendingTotal = pending.reduce((s, i) => s + i.amount, 0)
+  const overdueTotal = overdue.reduce((s, i) => s + i.amount, 0)
+  const nextPending  = pending.length > 0
+    ? pending.reduce((a, b) => a.due_date < b.due_date ? a : b)
+    : null
+
   return (
     <div>
       <div className="mb-2">
         <h1 className="text-2xl font-bold text-tx-primary">Situação financeira</h1>
-        <p className="text-sm text-tx-dim mt-1">
-          Lucas Ferreira · Matrícula GD-0043 · Plano Semestral
-        </p>
+        <p className="text-sm text-tx-dim mt-1">{student.name}</p>
       </div>
 
       {/* Indicadores */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-7 mt-6">
         <StatCard
           label="Em aberto"
-          value="R$ 55,00"
-          sub="1 mensalidade · Dezembro de 2026"
+          value={fmtPrice(pendingTotal)}
+          sub={pending.length === 0
+            ? 'Nenhuma mensalidade pendente'
+            : `${pending.length} mensalidade${pending.length > 1 ? 's' : ''}`
+          }
         />
         <StatCard
           label="Próximo vencimento"
-          value="20/12/2026"
-          sub="Mensalidade de R$ 55,00"
+          value={nextPending ? fmtDate(nextPending.due_date) : '—'}
+          sub={nextPending ? `${fmtCompetence(nextPending.competence)} · ${fmtPrice(nextPending.amount)}` : 'Sem pendências'}
         />
         <StatCard
           label="Em atraso"
-          value="R$ 0,00"
-          sub="Nenhuma mensalidade vencida"
+          value={fmtPrice(overdueTotal)}
+          sub={overdue.length === 0
+            ? 'Nenhuma mensalidade vencida'
+            : `${overdue.length} mensalidade${overdue.length > 1 ? 's' : ''} vencida${overdue.length > 1 ? 's' : ''}`
+          }
         />
       </div>
 
       {/* Tabela de mensalidades */}
       <div className="bg-card border border-border rounded-lg mb-5">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-border">
           <h2 className="text-base font-semibold text-tx-primary">Minhas mensalidades</h2>
-          <div className="flex gap-2">
-            <Select className="w-28 text-xs">
-              <option>2026</option>
-            </Select>
-            <Select className="w-32 text-xs">
-              <option>Todas</option>
-              <option>Em aberto</option>
-              <option>Pago</option>
-              <option>Em atraso</option>
-            </Select>
-          </div>
         </div>
 
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>Competência</Th>
-              <Th>Vencimento</Th>
-              <Th>Valor</Th>
-              <Th>Situação</Th>
-              <Th>Data do pagamento</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {payments.map((p, i) => (
-              <Tr key={i}>
-                <Td>{p.month}</Td>
-                <Td className="text-tx-dim">{p.due}</Td>
-                <Td>{p.value}</Td>
-                <Td>
-                  <Badge variant={
-                    p.status === 'Pago'      ? 'success' :
-                    p.status === 'Em atraso' ? 'danger'  : 'warning'
-                  }>
-                    {p.status}
-                  </Badge>
-                </Td>
-                <Td className="text-tx-dim font-medium">
-                  {p.paidAt ?? '—'}
-                </Td>
+        {installments.length === 0 ? (
+          <div className="px-6 py-8 text-center">
+            <p className="text-sm text-tx-muted">Nenhuma mensalidade encontrada.</p>
+          </div>
+        ) : (
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Competência</Th>
+                <Th>Vencimento</Th>
+                <Th>Valor</Th>
+                <Th>Situação</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
+            </Thead>
+            <Tbody>
+              {installments.map(inst => {
+                const badge = installmentBadge(inst)
+                return (
+                  <Tr key={inst.id}>
+                    <Td>{fmtCompetence(inst.competence)}</Td>
+                    <Td className="text-tx-dim">{fmtDate(inst.due_date)}</Td>
+                    <Td>{fmtPrice(inst.amount)}</Td>
+                    <Td><Badge variant={badge.variant}>{badge.label}</Badge></Td>
+                  </Tr>
+                )
+              })}
+            </Tbody>
+          </Table>
+        )}
 
         <div className="px-6 py-3 border-t border-border">
           <p className="text-xs text-tx-muted">
-            6 mensalidades encontradas · referência: 21/11/2026. Uma mensalidade em aberto não está necessariamente em atraso.
+            {installments.length} mensalidade{installments.length !== 1 ? 's' : ''} encontrada{installments.length !== 1 ? 's' : ''}.
+            {' '}Uma mensalidade em aberto não está necessariamente em atraso.
           </p>
         </div>
       </div>
@@ -112,26 +150,33 @@ export default function StudentFinance() {
         <div className="px-6 py-4 border-b border-border">
           <h2 className="text-base font-semibold text-tx-primary">Histórico de pagamentos</h2>
         </div>
-        <Table>
-          <Thead>
-            <Tr>
-              <Th>Recebido em</Th>
-              <Th>Competência</Th>
-              <Th>Valor recebido</Th>
-              <Th>Forma de recebimento</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {history.map((h, i) => (
-              <Tr key={i}>
-                <Td className="text-tx-dim">{h.paidAt}</Td>
-                <Td>{h.month}</Td>
-                <Td>{h.value}</Td>
-                <Td className="font-medium">{h.method}</Td>
+
+        {payments.length === 0 ? (
+          <div className="px-6 py-8 text-center">
+            <p className="text-sm text-tx-muted">Nenhum pagamento registrado.</p>
+          </div>
+        ) : (
+          <Table>
+            <Thead>
+              <Tr>
+                <Th>Recebido em</Th>
+                <Th>Competência</Th>
+                <Th>Valor recebido</Th>
+                <Th>Observações</Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
+            </Thead>
+            <Tbody>
+              {payments.map(p => (
+                <Tr key={p.id}>
+                  <Td className="text-tx-dim">{fmtDate(p.paid_at)}</Td>
+                  <Td>{fmtCompetence(p.competence)}</Td>
+                  <Td>{fmtPrice(p.amount_paid)}</Td>
+                  <Td className="text-tx-dim">{p.notes || '—'}</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        )}
       </div>
 
       {/* Aviso */}
