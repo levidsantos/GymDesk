@@ -1,6 +1,6 @@
 const express = require('express')
 const router  = express.Router()
-const { getDatabase } = require('../database/db')
+const { getDatabase, expireMaturedEnrollments } = require('../database/db')
 
 // ── Horários de funcionamento ────────────────────────────────────────────────
 // dayOfWeek: 0=domingo, 1=segunda … 6=sábado
@@ -46,6 +46,7 @@ function formatSlot(slot) {
 // Query: student_id (obrigatório), unit_slug (obrigatório: power|evolution)
 // Opcionais para testes: date (YYYY-MM-DD), time (HH:MM)
 router.get('/check', (req, res) => {
+  expireMaturedEnrollments()
   const db = getDatabase()
   const { student_id, unit_slug, date, time } = req.query
 

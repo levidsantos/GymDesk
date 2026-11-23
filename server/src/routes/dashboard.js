@@ -1,8 +1,9 @@
 const express = require('express')
 const router  = express.Router()
-const { getDatabase } = require('../database/db')
+const { getDatabase, expireMaturedEnrollments } = require('../database/db')
 
 router.get('/', (req, res) => {
+  expireMaturedEnrollments()
   const db    = getDatabase()
   const today = new Date().toISOString().slice(0, 10)
   const currentMonth = today.slice(0, 7)

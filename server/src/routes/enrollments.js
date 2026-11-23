@@ -1,6 +1,6 @@
 const express = require('express')
 const router  = express.Router()
-const { getDatabase } = require('../database/db')
+const { getDatabase, expireMaturedEnrollments } = require('../database/db')
 
 // ── Utilitários de data ──────────────────────────────────────────────────────
 
@@ -131,6 +131,9 @@ router.post('/', (req, res) => {
     'SELECT p.*, u.slug AS unit_slug, u.name AS unit_name FROM plans p JOIN units u ON u.id = p.unit_id WHERE p.id = ?'
   ).get(plan_id)
   if (!plan) return res.status(404).json({ error: 'Plano não encontrado.' })
+
+  // Expira matrículas vencidas antes de verificar duplicidade
+  expireMaturedEnrollments()
 
   // Verifica matrícula ativa existente
   const existing = db.prepare(

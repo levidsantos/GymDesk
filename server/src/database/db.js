@@ -35,4 +35,13 @@ function initializeDatabase() {
   return database
 }
 
-module.exports = { getDatabase, initializeDatabase }
+function expireMaturedEnrollments() {
+  const database = getDatabase()
+  const today = new Date().toISOString().slice(0, 10)
+  database.prepare(`
+    UPDATE enrollments SET status = 'inactive', inactivated_at = datetime('now')
+    WHERE status = 'active' AND end_date < ?
+  `).run(today)
+}
+
+module.exports = { getDatabase, initializeDatabase, expireMaturedEnrollments }

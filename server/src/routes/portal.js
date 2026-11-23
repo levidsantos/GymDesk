@@ -1,6 +1,6 @@
 const express = require('express')
 const router  = express.Router()
-const { getDatabase } = require('../database/db')
+const { getDatabase, expireMaturedEnrollments } = require('../database/db')
 
 // ── Horários (mesma fonte que access.js) ────────────────────────────────────
 
@@ -79,6 +79,7 @@ function getStudentByAccount(db, accountId) {
 // ── GET /api/portal/home ────────────────────────────────────────────────────
 
 router.get('/home', (req, res) => {
+  expireMaturedEnrollments()
   const db = getDatabase()
   const student = getStudentByAccount(db, req.accountId)
 
@@ -154,6 +155,7 @@ router.get('/home', (req, res) => {
 // ── GET /api/portal/finance ─────────────────────────────────────────────────
 
 router.get('/finance', (req, res) => {
+  expireMaturedEnrollments()
   const db = getDatabase()
   const student = getStudentByAccount(db, req.accountId)
 
@@ -211,6 +213,7 @@ router.get('/finance', (req, res) => {
 // ── GET /api/portal/access ──────────────────────────────────────────────────
 
 router.get('/access', (req, res) => {
+  expireMaturedEnrollments()
   const db = getDatabase()
   const student = getStudentByAccount(db, req.accountId)
 

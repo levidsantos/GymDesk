@@ -150,7 +150,28 @@ router.patch('/:id/inactivate', (req, res) => {
     return res.status(409).json({ error: 'O aluno já está inativo.' })
   }
 
-  db.prepare("UPDATE students SET status = 'inactive' WHERE id = ?").run(row.id)
+  const today = new Date().toISOString().slice(0, 10)
+
+  const run = db.transaction(() => {
+    db.prepare("UPDATE students SET status = 'inactive' WHERE id = ?").run(row.id)
+
+    const activeEnrollment = db.prepare(
+      "SELECT id FROM enrollments WHERE student_id = ? AND status = 'active'"
+    ).get(row.id)
+
+    if (activeEnrollment) {
+      db.prepare(`
+        UPDATE enrollments SET status = 'inactive', inactivated_at = datetime('now')
+        WHERE id = ?
+      `).run(activeEnrollment.id)
+
+      db.prepare(`
+        UPDATE installments SET status = 'cancelled'
+        WHERE enrollment_id = ? AND status = 'pending' AND due_date > ?
+      `).run(activeEnrollment.id, today)
+    }
+  })
+  run()
 
   const updated = db.prepare('SELECT * FROM students WHERE id = ?').get(row.id)
   res.json({ student: formatStudent(updated) })
