@@ -88,6 +88,20 @@ router.get('/installments', (req, res) => {
   `
   const total = db.prepare(countQuery).get(...params).n
 
+  const summaryQuery = `
+    SELECT
+      SUM(CASE WHEN i.status = 'pending' AND i.due_date < '${today}' THEN 1 ELSE 0 END) AS overdue,
+      SUM(CASE WHEN i.status = 'pending' AND i.due_date >= '${today}' THEN 1 ELSE 0 END) AS pending,
+      SUM(CASE WHEN i.status = 'paid' THEN 1 ELSE 0 END) AS paid
+    FROM installments i
+    JOIN enrollments e ON e.id = i.enrollment_id
+    JOIN students   s ON s.id = e.student_id
+    JOIN plans      p ON p.id = e.plan_id
+    JOIN units      u ON u.id = p.unit_id
+    ${clause}
+  `
+  const summary = db.prepare(summaryQuery).get(...params)
+
   const rows = db.prepare(
     `${installmentQuery} ${clause} ORDER BY i.due_date DESC LIMIT ? OFFSET ?`
   ).all(...params, pageSize, offset)
@@ -97,6 +111,11 @@ router.get('/installments', (req, res) => {
     total,
     page: pageNum,
     totalPages: Math.ceil(total / pageSize),
+    summary: {
+      overdue: summary.overdue || 0,
+      pending: summary.pending || 0,
+      paid:    summary.paid    || 0,
+    },
   })
 })
 

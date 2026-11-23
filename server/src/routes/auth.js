@@ -54,12 +54,15 @@ router.post('/login', (req, res) => {
       responseData.student_id   = student.id
       responseData.student_name = student.name
       const enrollment = db.prepare(`
-        SELECT u.slug AS unit_slug FROM enrollments e
+        SELECT u.slug AS unit_slug, u.name AS unit_name, p.name AS plan_name
+        FROM enrollments e
         JOIN plans p ON p.id = e.plan_id
         JOIN units u ON u.id = p.unit_id
         WHERE e.student_id = ? AND e.status = 'active'
       `).get(student.id)
-      responseData.unit_slug = enrollment?.unit_slug ?? null
+      responseData.unit_slug  = enrollment?.unit_slug  ?? null
+      responseData.unit_name  = enrollment?.unit_name  ?? null
+      responseData.plan_name  = enrollment?.plan_name  ?? null
     }
   }
 
@@ -98,12 +101,15 @@ router.get('/me', authenticate, (req, res) => {
       responseData.student_id   = student.id
       responseData.student_name = student.name
       const enrollment = db.prepare(`
-        SELECT u.slug AS unit_slug FROM enrollments e
+        SELECT u.slug AS unit_slug, u.name AS unit_name, p.name AS plan_name
+        FROM enrollments e
         JOIN plans p ON p.id = e.plan_id
         JOIN units u ON u.id = p.unit_id
         WHERE e.student_id = ? AND e.status = 'active'
       `).get(student.id)
-      responseData.unit_slug = enrollment?.unit_slug ?? null
+      responseData.unit_slug  = enrollment?.unit_slug  ?? null
+      responseData.unit_name  = enrollment?.unit_name  ?? null
+      responseData.plan_name  = enrollment?.plan_name  ?? null
     }
   }
 

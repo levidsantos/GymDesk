@@ -70,6 +70,7 @@ export default function Payments() {
       setTotal(data.total)
       setPage(data.page)
       setTotalPages(data.totalPages)
+      if (data.summary) setSummary(data.summary)
     } catch (e) {
       setListError(e.message)
     } finally {
@@ -147,10 +148,8 @@ export default function Payments() {
 
   useEffect(() => { fetchHistory() }, [fetchHistory])
 
-  // ── Resumo financeiro da listagem ──────────────────────────────────────────
-  const totalPending   = installments.filter(i => i.status === 'pending' && !i.is_overdue).length
-  const totalOverdue   = installments.filter(i => i.is_overdue).length
-  const totalPaid      = installments.filter(i => i.status === 'paid').length
+  // ── Resumo financeiro (totais do backend, não apenas da página) ─────────
+  const [summary, setSummary] = useState({ overdue: 0, pending: 0, paid: 0 })
 
   const rangeStart = total === 0 ? 0 : (page - 1) * 30 + 1
   const rangeEnd   = Math.min(page * 30, total)
@@ -198,16 +197,16 @@ export default function Payments() {
         <div className="flex-1 min-w-0">
 
           {/* Resumo rápido */}
-          {(totalOverdue > 0 || totalPending > 0 || totalPaid > 0) && (
+          {(summary.overdue > 0 || summary.pending > 0 || summary.paid > 0) && (
             <div className="flex gap-3 mb-4 text-xs text-tx-muted">
-              {totalOverdue > 0 && (
-                <span className="text-danger font-medium">{totalOverdue} em atraso</span>
+              {summary.overdue > 0 && (
+                <span className="text-danger font-medium">{summary.overdue} em atraso</span>
               )}
-              {totalPending > 0 && (
-                <span>{totalPending} em aberto</span>
+              {summary.pending > 0 && (
+                <span>{summary.pending} em aberto</span>
               )}
-              {totalPaid > 0 && (
-                <span className="text-success">{totalPaid} paga{totalPaid !== 1 ? 's' : ''}</span>
+              {summary.paid > 0 && (
+                <span className="text-success">{summary.paid} paga{summary.paid !== 1 ? 's' : ''}</span>
               )}
             </div>
           )}
