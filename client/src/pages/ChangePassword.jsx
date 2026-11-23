@@ -48,7 +48,7 @@ export default function ChangePassword({ onSuccess, onLogout, isForced = true })
 
   return (
     <div className="min-h-screen bg-base flex flex-col">
-      <header className="px-10 py-5 border-b border-border flex items-center justify-between">
+      <header className="px-4 sm:px-10 py-5 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Dumbbell size={20} className="text-evolution" />
           <span className="font-bold text-tx-primary tracking-tight">GymDesk</span>
@@ -57,7 +57,7 @@ export default function ChangePassword({ onSuccess, onLogout, isForced = true })
 
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm">
-          <div className="bg-card border border-border rounded-xl p-8">
+          <div className="bg-card border border-border rounded-xl p-6 sm:p-8">
             <h1 className="text-2xl font-bold text-tx-primary mb-1">
               {isForced ? 'Alterar senha' : 'Nova senha'}
             </h1>

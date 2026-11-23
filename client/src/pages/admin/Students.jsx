@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { Input, InputField, Select } from '../../components/Input'
 import Button from '../../components/Button'
 import Badge from '../../components/Badge'
@@ -285,21 +285,21 @@ export default function Students() {
   return (
     <div>
       {/* Título */}
-      <div className="flex items-start justify-between mb-7">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-7">
         <div>
           <h1 className="text-2xl font-bold text-tx-primary">Alunos e matrículas</h1>
           <p className="text-sm text-tx-dim mt-1">
             Consulte alunos, acompanhe matrículas e faça novos cadastros.
           </p>
         </div>
-        <Button onClick={openNew}>Novo cadastro</Button>
+        <Button onClick={openNew} className="self-start shrink-0">Novo cadastro</Button>
       </div>
 
       <div className={`flex gap-6 ${panelMode ? 'items-start' : ''}`}>
         {/* Lista */}
         <div className="flex-1 min-w-0">
           {/* Filtros */}
-          <form onSubmit={handleSearch} className="flex gap-3 mb-5">
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 mb-5">
             <div className="flex-1 relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
               <Input
@@ -309,16 +309,18 @@ export default function Students() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Select
-              className="w-40"
-              value={statusFilter}
-              onChange={(e) => handleStatusFilter(e.target.value)}
-            >
-              <option value="active">Ativos</option>
-              <option value="inactive">Inativos</option>
-              <option value="all">Todos</option>
-            </Select>
-            <Button type="submit" variant="secondary">Pesquisar</Button>
+            <div className="flex gap-3">
+              <Select
+                className="w-40"
+                value={statusFilter}
+                onChange={(e) => handleStatusFilter(e.target.value)}
+              >
+                <option value="active">Ativos</option>
+                <option value="inactive">Inativos</option>
+                <option value="all">Todos</option>
+              </Select>
+              <Button type="submit" variant="secondary">Pesquisar</Button>
+            </div>
           </form>
 
           {listError && <Alert variant="danger" className="mb-4">{listError}</Alert>}
@@ -379,9 +381,24 @@ export default function Students() {
           </div>
         </div>
 
-        {/* Painel lateral */}
+        {/* Painel lateral (desktop) / overlay (mobile) */}
         {panelMode && (
-          <div className="w-80 min-w-[300px] bg-card border border-border rounded-lg p-6 self-start">
+          <>
+          {/* Backdrop mobile */}
+          <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={closePanel} />
+          <div className="
+            fixed inset-x-0 bottom-0 top-12 z-50 overflow-y-auto
+            md:relative md:inset-auto md:z-auto
+            w-full md:w-80 md:min-w-[300px]
+            bg-card border border-border rounded-t-lg md:rounded-lg p-6 self-start
+          ">
+            {/* Fechar mobile */}
+            <button
+              onClick={closePanel}
+              className="absolute top-4 right-4 p-1 text-tx-muted hover:text-tx-primary transition-colors md:hidden"
+            >
+              <X size={18} />
+            </button>
 
             {/* ── Dados cadastrais ── */}
             <h2 className="text-base font-semibold text-tx-primary mb-1">
@@ -556,6 +573,7 @@ export default function Students() {
               </div>
             )}
           </div>
+          </>
         )}
       </div>
     </div>

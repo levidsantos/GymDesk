@@ -36,12 +36,12 @@ export default function Login({ onLogin }) {
   return (
     <div className="min-h-screen bg-base flex flex-col">
       {/* Header */}
-      <header className="px-10 py-5 border-b border-border flex items-center justify-between">
+      <header className="px-4 sm:px-10 py-5 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Dumbbell size={20} className="text-evolution" />
           <span className="font-bold text-tx-primary tracking-tight">GymDesk</span>
         </div>
-        <div className="flex items-center gap-4 text-sm text-tx-muted">
+        <div className="hidden sm:flex items-center gap-4 text-sm text-tx-muted">
           <span>Muscle Power</span>
           <span className="text-border">·</span>
           <span>Muscle Evolution</span>
@@ -52,7 +52,7 @@ export default function Login({ onLogin }) {
       <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm">
           {/* Card de login */}
-          <div className="bg-card border border-border rounded-xl p-8">
+          <div className="bg-card border border-border rounded-xl p-6 sm:p-8">
             <h1 className="text-2xl font-bold text-tx-primary mb-1">Entrar no GymDesk</h1>
             <p className="text-sm text-tx-muted mb-7">
               Acesse sua conta de administrador ou aluno.

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { Input, InputField, Select } from '../../components/Input'
 import Button from '../../components/Button'
 import Badge from '../../components/Badge'
@@ -166,7 +166,7 @@ export default function Payments() {
       </div>
 
       {/* Filtros */}
-      <form onSubmit={handleSearch} className="flex gap-3 mb-6">
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="flex-1 relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
           <Input
@@ -176,18 +176,20 @@ export default function Payments() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Select
-          className="w-44"
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); fetchInstallments(1, search, e.target.value) }}
-        >
-          <option value="all">Todas as situações</option>
-          <option value="pending">Em aberto</option>
-          <option value="overdue">Em atraso</option>
-          <option value="paid">Pagas</option>
-          <option value="cancelled">Canceladas</option>
-        </Select>
-        <Button type="submit" variant="secondary">Pesquisar</Button>
+        <div className="flex gap-3">
+          <Select
+            className="flex-1 sm:w-44"
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); fetchInstallments(1, search, e.target.value) }}
+          >
+            <option value="all">Todas as situações</option>
+            <option value="pending">Em aberto</option>
+            <option value="overdue">Em atraso</option>
+            <option value="paid">Pagas</option>
+            <option value="cancelled">Canceladas</option>
+          </Select>
+          <Button type="submit" variant="secondary">Pesquisar</Button>
+        </div>
       </form>
 
       {listError && <Alert variant="danger" className="mb-4">{listError}</Alert>}
@@ -293,7 +295,27 @@ export default function Payments() {
         </div>
 
         {/* Painel de registro / confirmação */}
-        <div className="w-72 min-w-[260px] bg-card border border-border rounded-lg p-6 self-start">
+        {/* Mobile: overlay quando ativo; Desktop: sempre visível como side panel */}
+        {(selected || lastPayment) && (
+          <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={closePay} />
+        )}
+        <div className={`
+          ${selected || lastPayment
+            ? 'fixed inset-x-0 bottom-0 top-12 z-50 overflow-y-auto md:relative md:inset-auto md:z-auto w-full'
+            : 'hidden md:block'
+          }
+          md:w-72 md:min-w-[260px] bg-card border border-border rounded-t-lg md:rounded-lg p-6 self-start
+        `}>
+          {/* Fechar mobile */}
+          {(selected || lastPayment) && (
+            <button
+              onClick={closePay}
+              className="absolute top-4 right-4 p-1 text-tx-muted hover:text-tx-primary transition-colors md:hidden"
+            >
+              <X size={18} />
+            </button>
+          )}
+
           {lastPayment ? (
             /* Confirmação */
             <>
