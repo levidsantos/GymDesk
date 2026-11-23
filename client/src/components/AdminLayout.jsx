@@ -5,10 +5,10 @@
 import AdminSidebar from './AdminSidebar'
 import PageHeader from './PageHeader'
 
-export default function AdminLayout({ currentPage, onNavigate, breadcrumb, date, children }) {
+export default function AdminLayout({ currentPage, onNavigate, breadcrumb, date, accountName, onLogout, children }) {
   return (
     <div className="flex h-screen bg-base overflow-hidden">
-      <AdminSidebar currentPage={currentPage} onNavigate={onNavigate} />
+      <AdminSidebar currentPage={currentPage} onNavigate={onNavigate} accountName={accountName} onLogout={onLogout} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <PageHeader breadcrumb={breadcrumb} date={date} />
         <main className="flex-1 overflow-y-auto px-8 py-7">

@@ -11,7 +11,7 @@ const navItems = [
   { label: 'Regras de acesso',      icon: ShieldCheck,     page: 'rules'     },
 ]
 
-export default function AdminSidebar({ currentPage, onNavigate }) {
+export default function AdminSidebar({ currentPage, onNavigate, accountName, onLogout }) {
   return (
     <aside className="
       w-[220px] min-w-[220px] h-screen sticky top-0
@@ -68,12 +68,15 @@ export default function AdminSidebar({ currentPage, onNavigate }) {
 
       {/* Usuário + Sair */}
       <div className="px-5 py-4 border-t border-border">
-        <p className="text-sm text-tx-primary font-medium">Mariana Oliveira</p>
+        <p className="text-sm text-tx-primary font-medium">{accountName || 'Administrador'}</p>
         <p className="text-xs text-tx-muted mb-3">Administradora</p>
-        <button className="
-          w-full flex items-center gap-2 text-sm text-tx-secondary
-          hover:text-danger transition-colors duration-150
-        ">
+        <button
+          onClick={onLogout}
+          className="
+            w-full flex items-center gap-2 text-sm text-tx-secondary
+            hover:text-danger transition-colors duration-150
+          "
+        >
           <LogOut size={14} />
           Sair
         </button>

@@ -23,6 +23,7 @@ export default function StudentSidebar({
   studentName,
   enrollment,
   accentColor = '#eab308',
+  onLogout,
 }) {
   return (
     <aside className="
@@ -85,10 +86,13 @@ export default function StudentSidebar({
       <div className="px-5 py-4 border-t border-border">
         <p className="text-sm text-tx-primary font-medium">{studentName || 'Aluno'}</p>
         <p className="text-xs text-tx-muted mb-3">{enrollment || ''}</p>
-        <button className="
-          w-full flex items-center gap-2 text-sm text-tx-secondary
-          hover:text-danger transition-colors duration-150
-        ">
+        <button
+          onClick={onLogout}
+          className="
+            w-full flex items-center gap-2 text-sm text-tx-secondary
+            hover:text-danger transition-colors duration-150
+          "
+        >
           <LogOut size={14} />
           Sair
         </button>

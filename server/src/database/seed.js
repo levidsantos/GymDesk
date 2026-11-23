@@ -1,4 +1,5 @@
 const { getDatabase } = require('./db')
+const bcrypt = require('bcryptjs')
 
 const UNITS = [
   { slug: 'power',     name: 'Muscle Power'     },
@@ -40,6 +41,26 @@ function seedDatabase() {
   })
 
   runSeed()
+
+  seedAdminAccount(db)
+}
+
+function seedAdminAccount(db) {
+  const email    = process.env.ADMIN_EMAIL
+  const password = process.env.ADMIN_PASSWORD
+
+  if (!email || !password) return
+
+  const existing = db.prepare('SELECT 1 FROM accounts WHERE email = ?').get(email.toLowerCase())
+  if (existing) return
+
+  const hash = bcrypt.hashSync(password, 10)
+  db.prepare(`
+    INSERT INTO accounts (email, password_hash, role, must_change_password)
+    VALUES (?, ?, 'admin', 0)
+  `).run(email.toLowerCase(), hash)
+
+  console.log(`Conta administrativa criada: ${email}`)
 }
 
 module.exports = { seedDatabase }

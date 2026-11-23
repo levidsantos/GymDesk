@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Search } from 'lucide-react'
 import { Input, InputField, Select } from '../../components/Input'
 import Button from '../../components/Button'
@@ -6,24 +6,156 @@ import Badge from '../../components/Badge'
 import Alert from '../../components/Alert'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/Table'
 
-// Carlos Mendes — Muscle Power · Plano Anual R$50/mês · desde 05/03/2026 · vencimento todo dia 5
-// Nov/2026 venceu em 05/11 e ainda não foi pago → Em atraso
-const studentData = {
-  name: 'Carlos Mendes',
-  enrollment: 'GD-0017 · Ativa',
-  plan: 'Anual · Muscle Power · R$ 50,00/mês',
+// ── API ──────────────────────────────────────────────────────────────────────
+
+async function apiFetch(path, options = {}) {
+  const res  = await fetch(`/api${path}`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Erro na requisição.')
+  return data
 }
 
-const payments = [
-  { month: 'Nov/2026', due: '05/11/2026', value: 'R$ 50,00', status: 'Em atraso', paidAt: null         },
-  { month: 'Out/2026', due: '05/10/2026', value: 'R$ 50,00', status: 'Pago',      paidAt: '03/10/2026' },
-  { month: 'Set/2026', due: '05/09/2026', value: 'R$ 50,00', status: 'Pago',      paidAt: '05/09/2026' },
-  { month: 'Ago/2026', due: '05/08/2026', value: 'R$ 50,00', status: 'Pago',      paidAt: '04/08/2026' },
-]
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmtDate(iso) {
+  if (!iso) return '—'
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
+function fmtCompetence(yyyymm) {
+  if (!yyyymm) return '—'
+  const [y, m] = yyyymm.split('-')
+  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+  return `${months[parseInt(m) - 1]}/${y}`
+}
+
+function fmtPrice(value) {
+  return value?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'
+}
+
+function installmentBadge(inst) {
+  if (inst.status === 'paid')      return { variant: 'success', label: 'Pago' }
+  if (inst.status === 'cancelled') return { variant: 'neutral', label: 'Cancelada' }
+  if (inst.is_overdue)             return { variant: 'danger',  label: 'Em atraso' }
+  return { variant: 'warning', label: 'Em aberto' }
+}
+
+const todayISO = () => new Date().toISOString().slice(0, 10)
+
+// ── Componente ───────────────────────────────────────────────────────────────
 
 export default function Payments() {
-  const [registered, setRegistered] = useState(false)
-  const [selected, setSelected]     = useState(null)
+  // ── Mensalidades ───────────────────────────────────────────────────────────
+  const [installments, setInstallments] = useState([])
+  const [total,        setTotal]        = useState(0)
+  const [page,         setPage]         = useState(1)
+  const [totalPages,   setTotalPages]   = useState(1)
+  const [search,       setSearch]       = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [loading,      setLoading]      = useState(false)
+  const [listError,    setListError]    = useState('')
+
+  const fetchInstallments = useCallback(async (p, s, st) => {
+    setLoading(true)
+    setListError('')
+    try {
+      const params = new URLSearchParams({ page: p, search: s, status: st, limit: 30 })
+      const data   = await apiFetch(`/installments?${params}`)
+      setInstallments(data.installments)
+      setTotal(data.total)
+      setPage(data.page)
+      setTotalPages(data.totalPages)
+    } catch (e) {
+      setListError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchInstallments(1, '', 'all') }, [fetchInstallments])
+
+  function handleSearch(e) {
+    e.preventDefault()
+    fetchInstallments(1, search, statusFilter)
+  }
+
+  // ── Painel de pagamento ────────────────────────────────────────────────────
+  const [selected,     setSelected]     = useState(null)   // installment a pagar
+  const [payForm,      setPayForm]      = useState({ paid_at: '', amount_paid: '', notes: '' })
+  const [payError,     setPayError]     = useState('')
+  const [paySaving,    setPaySaving]    = useState(false)
+  const [lastPayment,  setLastPayment]  = useState(null)   // confirmação pós-registro
+
+  function openPay(inst) {
+    setPayError('')
+    setLastPayment(null)
+    setPayForm({
+      paid_at:    todayISO(),
+      amount_paid: String(inst.amount),
+      notes:      '',
+    })
+    setSelected(inst)
+  }
+
+  function closePay() {
+    setSelected(null)
+    setLastPayment(null)
+    setPayError('')
+  }
+
+  async function handleRegister(e) {
+    e.preventDefault()
+    setPayError('')
+    setPaySaving(true)
+    try {
+      const data = await apiFetch(`/installments/${selected.id}/pay`, {
+        method: 'POST',
+        body: JSON.stringify({
+          paid_at:     payForm.paid_at,
+          amount_paid: parseFloat(payForm.amount_paid),
+          notes:       payForm.notes.trim() || null,
+        }),
+      })
+      setLastPayment({ installment: data.installment, payment: data.payment })
+      setSelected(null)
+      fetchInstallments(page, search, statusFilter)
+      fetchHistory()
+    } catch (e) {
+      setPayError(e.message)
+    } finally {
+      setPaySaving(false)
+    }
+  }
+
+  // ── Histórico ──────────────────────────────────────────────────────────────
+  const [history,      setHistory]      = useState([])
+  const [historyError, setHistoryError] = useState('')
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const data = await apiFetch('/payments?limit=10')
+      setHistory(data.payments)
+    } catch (e) {
+      setHistoryError(e.message)
+    }
+  }, [])
+
+  useEffect(() => { fetchHistory() }, [fetchHistory])
+
+  // ── Resumo financeiro da listagem ──────────────────────────────────────────
+  const totalPending   = installments.filter(i => i.status === 'pending' && !i.is_overdue).length
+  const totalOverdue   = installments.filter(i => i.is_overdue).length
+  const totalPaid      = installments.filter(i => i.status === 'paid').length
+
+  const rangeStart = total === 0 ? 0 : (page - 1) * 30 + 1
+  const rangeEnd   = Math.min(page * 30, total)
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div>
@@ -34,156 +166,212 @@ export default function Payments() {
         </p>
       </div>
 
-      {registered && (
-        <Alert variant="success" title="Pagamento registrado com sucesso" className="mb-6">
-          A mensalidade de novembro de Carlos Mendes foi atualizada para Pago.
-        </Alert>
-      )}
-
       {/* Filtros */}
-      <div className="flex gap-3 mb-6">
+      <form onSubmit={handleSearch} className="flex gap-3 mb-6">
         <div className="flex-1 relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
-          <Input placeholder="Pesquisar aluno" className="pl-9" defaultValue="Carlos Mendes" />
+          <Input
+            placeholder="Pesquisar aluno"
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <Select className="w-40">
-          <option>Todas as situações</option>
-          <option>Em aberto</option>
-          <option>Em atraso</option>
-          <option>Pago</option>
+        <Select
+          className="w-44"
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); fetchInstallments(1, search, e.target.value) }}
+        >
+          <option value="all">Todas as situações</option>
+          <option value="pending">Em aberto</option>
+          <option value="overdue">Em atraso</option>
+          <option value="paid">Pagas</option>
+          <option value="cancelled">Canceladas</option>
         </Select>
-        <Select className="w-40">
-          <option>Todas as competências</option>
-          <option>Nov/2026</option>
-          <option>Out/2026</option>
-        </Select>
-        <Button variant="secondary">Pesquisar</Button>
-      </div>
+        <Button type="submit" variant="secondary">Pesquisar</Button>
+      </form>
+
+      {listError && <Alert variant="danger" className="mb-4">{listError}</Alert>}
 
       <div className="flex gap-6 items-start">
         {/* Lista */}
         <div className="flex-1 min-w-0">
-          {/* Info do aluno */}
-          <div className="bg-card border border-border rounded-lg p-5 mb-4">
-            <p className="text-base font-semibold text-tx-primary mb-3">{studentData.name}</p>
-            <div className="grid grid-cols-2 gap-y-2 text-sm">
-              <span className="text-tx-muted">Matrícula</span>
-              <span className="text-tx-primary font-medium">{studentData.enrollment}</span>
-              <span className="text-tx-muted">Plano e origem</span>
-              <span className="text-tx-primary font-medium">{studentData.plan}</span>
+
+          {/* Resumo rápido */}
+          {(totalOverdue > 0 || totalPending > 0 || totalPaid > 0) && (
+            <div className="flex gap-3 mb-4 text-xs text-tx-muted">
+              {totalOverdue > 0 && (
+                <span className="text-danger font-medium">{totalOverdue} em atraso</span>
+              )}
+              {totalPending > 0 && (
+                <span>{totalPending} em aberto</span>
+              )}
+              {totalPaid > 0 && (
+                <span className="text-success">{totalPaid} paga{totalPaid !== 1 ? 's' : ''}</span>
+              )}
             </div>
-          </div>
+          )}
 
           <Table>
             <Thead>
               <Tr>
+                <Th>Aluno</Th>
+                <Th>Unidade / Plano</Th>
                 <Th>Competência</Th>
                 <Th>Vencimento</Th>
                 <Th>Valor</Th>
                 <Th>Situação</Th>
-                <Th>Pagamento</Th>
                 <Th>Ação</Th>
               </Tr>
             </Thead>
             <Tbody>
-              {payments.map((p, i) => (
-                <Tr key={i}>
-                  <Td>{p.month}</Td>
-                  <Td className="text-tx-dim">{p.due}</Td>
-                  <Td>{p.value}</Td>
-                  <Td>
-                    <Badge variant={
-                      p.status === 'Pago' ? 'success' :
-                      p.status === 'Em atraso' ? 'danger' : 'warning'
-                    }>
-                      {p.status}
-                    </Badge>
-                  </Td>
-                  <Td className="text-tx-dim">{p.paidAt ?? '—'}</Td>
-                  <Td>
-                    {p.status !== 'Pago' ? (
-                      <Button size="sm" onClick={() => setSelected(p)}>Registrar</Button>
-                    ) : (
-                      <Button size="sm" variant="ghost">Ver registro</Button>
-                    )}
-                  </Td>
-                </Tr>
-              ))}
+              {loading ? (
+                <Tr><Td colSpan={7} className="text-center text-tx-muted py-8">Carregando...</Td></Tr>
+              ) : installments.length === 0 ? (
+                <Tr><Td colSpan={7} className="text-center text-tx-muted py-8">Nenhuma mensalidade encontrada.</Td></Tr>
+              ) : installments.map((inst) => {
+                const badge = installmentBadge(inst)
+                return (
+                  <Tr key={inst.id}>
+                    <Td>
+                      <span className="font-medium text-tx-primary">{inst.student_name}</span>
+                    </Td>
+                    <Td>
+                      <span className={`text-xs font-medium ${inst.unit_slug === 'evolution' ? 'text-evolution' : 'text-power'}`}>
+                        {inst.unit_name}
+                      </span>
+                      <p className="text-xs text-tx-muted">{inst.plan_name}</p>
+                    </Td>
+                    <Td>{fmtCompetence(inst.competence)}</Td>
+                    <Td className="text-tx-dim">{fmtDate(inst.due_date)}</Td>
+                    <Td>{fmtPrice(inst.amount)}</Td>
+                    <Td><Badge variant={badge.variant}>{badge.label}</Badge></Td>
+                    <Td>
+                      {inst.status === 'pending' ? (
+                        <Button size="sm" onClick={() => openPay(inst)}>Registrar</Button>
+                      ) : (
+                        <span className="text-xs text-tx-muted">—</span>
+                      )}
+                    </Td>
+                  </Tr>
+                )
+              })}
             </Tbody>
           </Table>
 
-          <p className="text-xs text-tx-muted mt-3">
-            4 mensalidades · Em atraso: R$ 50,00 · Pagas: R$ 150,00
-          </p>
-
-          {/* Histórico */}
-          <div className="bg-card border border-border rounded-lg p-5 mt-5">
-            <h2 className="text-sm font-semibold text-tx-primary mb-3">Histórico de pagamentos</h2>
-            <div className="space-y-2 text-sm text-tx-dim">
-              <p>Out/2026 · Recebido em 03/10/2026 · R$ 50,00 · Dinheiro</p>
-              <p>Set/2026 · Recebido em 05/09/2026 · R$ 50,00 · Pix</p>
-              <p>Ago/2026 · Recebido em 04/08/2026 · R$ 50,00 · Dinheiro</p>
+          {/* Paginação */}
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-xs text-tx-muted">
+              {total === 0 ? '0 mensalidades' : `${rangeStart}–${rangeEnd} de ${total}`}
+            </span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" disabled={page <= 1}
+                onClick={() => fetchInstallments(page - 1, search, statusFilter)}>Anterior</Button>
+              <span className="px-3 py-1.5 text-xs bg-evolution-muted text-evolution border border-evolution-border rounded">{page}</span>
+              <Button size="sm" variant="secondary" disabled={page >= totalPages}
+                onClick={() => fetchInstallments(page + 1, search, statusFilter)}>Próxima</Button>
             </div>
+          </div>
+
+          {/* Histórico de pagamentos */}
+          <div className="bg-card border border-border rounded-lg p-5 mt-6">
+            <h2 className="text-sm font-semibold text-tx-primary mb-3">Histórico de pagamentos</h2>
+            {historyError && <p className="text-xs text-danger">{historyError}</p>}
+            {history.length === 0 ? (
+              <p className="text-sm text-tx-muted">Nenhum pagamento registrado.</p>
+            ) : (
+              <div className="space-y-2 text-sm text-tx-dim">
+                {history.map((p) => (
+                  <p key={p.id}>
+                    {fmtCompetence(p.competence)} · {p.student_name} ·{' '}
+                    Recebido em {fmtDate(p.paid_at)} · {fmtPrice(p.amount_paid)}
+                    {p.notes && ` · ${p.notes}`}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Painel de registro */}
+        {/* Painel de registro / confirmação */}
         <div className="w-72 min-w-[260px] bg-card border border-border rounded-lg p-6 self-start">
-          {!registered && selected ? (
+          {lastPayment ? (
+            /* Confirmação */
+            <>
+              <h2 className="text-base font-semibold text-tx-primary mb-3">Registro confirmado</h2>
+              <Badge variant="success" className="mb-4">Pago</Badge>
+              <p className="text-3xl font-bold text-tx-primary mb-1">
+                {fmtPrice(lastPayment.payment.amount_paid)}
+              </p>
+              <p className="text-xs text-tx-dim mb-4">
+                {lastPayment.installment.student_name} · Mensalidade de {fmtCompetence(lastPayment.installment.competence)}
+              </p>
+              <div className="space-y-2 text-sm border-t border-border pt-4">
+                <div className="flex justify-between">
+                  <span className="text-tx-muted">Recebido em</span>
+                  <span className="font-medium">{fmtDate(lastPayment.payment.paid_at)}</span>
+                </div>
+                {lastPayment.payment.notes && (
+                  <div className="flex justify-between">
+                    <span className="text-tx-muted">Observação</span>
+                    <span className="font-medium text-right max-w-[140px]">{lastPayment.payment.notes}</span>
+                  </div>
+                )}
+              </div>
+              <Button className="w-full mt-5" onClick={closePay}>
+                Voltar às mensalidades
+              </Button>
+            </>
+          ) : selected ? (
+            /* Formulário */
             <>
               <h2 className="text-base font-semibold text-tx-primary mb-1">Registrar pagamento</h2>
-              <Badge variant="warning" className="mb-4">Mensalidade selecionada · Em aberto</Badge>
+              <Badge variant={selected.is_overdue ? 'danger' : 'warning'} className="mb-4">
+                {selected.is_overdue ? 'Em atraso' : 'Em aberto'}
+              </Badge>
               <p className="text-xs text-tx-dim mb-5">
-                {studentData.name} · {selected.month}<br/>
-                Vencimento em {selected.due}
+                {selected.student_name} · {fmtCompetence(selected.competence)}<br />
+                Vencimento em {fmtDate(selected.due_date)}
               </p>
 
-              <div className="flex flex-col gap-4">
+              {payError && <Alert variant="danger" className="mb-4">{payError}</Alert>}
+
+              <form onSubmit={handleRegister} className="flex flex-col gap-4">
                 <InputField label="Valor recebido">
-                  <Input defaultValue={selected.value} />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={payForm.amount_paid}
+                    onChange={(e) => setPayForm(f => ({ ...f, amount_paid: e.target.value }))}
+                    required
+                  />
                 </InputField>
                 <InputField label="Data do pagamento">
-                  <Input type="date" defaultValue="2026-11-21" />
-                </InputField>
-                <InputField label="Forma de recebimento">
-                  <Select>
-                    <option>Dinheiro</option>
-                    <option>Cartão na recepção</option>
-                    <option>Pix</option>
-                    <option>Outro</option>
-                  </Select>
+                  <Input
+                    type="date"
+                    value={payForm.paid_at}
+                    onChange={(e) => setPayForm(f => ({ ...f, paid_at: e.target.value }))}
+                    required
+                  />
                 </InputField>
                 <InputField label="Observação (opcional)">
-                  <Input placeholder="Recebido na recepção" />
+                  <Input
+                    placeholder="Dinheiro, Pix, etc."
+                    value={payForm.notes}
+                    onChange={(e) => setPayForm(f => ({ ...f, notes: e.target.value }))}
+                  />
                 </InputField>
                 <p className="text-xs text-tx-muted">
                   Registro administrativo de um valor já recebido. Nenhum pagamento online é realizado.
                 </p>
                 <div className="flex gap-2">
-                  <Button variant="secondary" className="flex-1" onClick={() => setSelected(null)}>Cancelar</Button>
-                  <Button className="flex-1" onClick={() => { setRegistered(true); setSelected(null) }}>Registrar</Button>
+                  <Button type="button" variant="secondary" className="flex-1" onClick={closePay}>Cancelar</Button>
+                  <Button type="submit" className="flex-1" disabled={paySaving}>
+                    {paySaving ? 'Salvando...' : 'Registrar'}
+                  </Button>
                 </div>
-              </div>
-            </>
-          ) : registered ? (
-            <>
-              <h2 className="text-base font-semibold text-tx-primary mb-3">Registro confirmado</h2>
-              <Badge variant="success" className="mb-4">Pago</Badge>
-              <p className="text-3xl font-bold text-tx-primary mb-1">R$ 50,00</p>
-              <p className="text-xs text-tx-dim mb-4">Carlos Mendes · Mensalidade de novembro de 2026</p>
-              <div className="space-y-2 text-sm border-t border-border pt-4">
-                <div className="flex justify-between">
-                  <span className="text-tx-muted">Recebido em</span>
-                  <span className="font-medium">21/11/2026</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-tx-muted">Forma</span>
-                  <span className="font-medium">Dinheiro</span>
-                </div>
-              </div>
-              <Button className="w-full mt-5" onClick={() => setRegistered(false)}>
-                Voltar às mensalidades
-              </Button>
+              </form>
             </>
           ) : (
             <p className="text-sm text-tx-muted">

@@ -3,6 +3,37 @@ const { getDatabase } = require('./db')
 function createTables() {
   const db = getDatabase()
 
+  // Migração: registered_by em payments deve ser nullable (autenticação ainda não implementada)
+  const paymentsCols = db.pragma('table_info(payments)')
+  const regByCol = paymentsCols.find(c => c.name === 'registered_by')
+  if (regByCol && regByCol.notnull === 1) {
+    db.exec(`
+      BEGIN;
+      CREATE TABLE payments_new (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        installment_id INTEGER NOT NULL UNIQUE REFERENCES installments(id) ON DELETE RESTRICT,
+        paid_at        TEXT    NOT NULL,
+        amount_paid    REAL    NOT NULL,
+        registered_by  INTEGER REFERENCES accounts(id) ON DELETE RESTRICT,
+        notes          TEXT
+      );
+      INSERT OR IGNORE INTO payments_new SELECT * FROM payments;
+      DROP TABLE payments;
+      ALTER TABLE payments_new RENAME TO payments;
+      COMMIT;
+    `)
+  }
+
+  // Migração: garante colunas novas em bancos criados antes desta versão
+  const cols = db.pragma('table_info(students)').map(c => c.name)
+  if (!cols.includes('email')) {
+    db.exec("ALTER TABLE students ADD COLUMN email TEXT")
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS uq_students_email ON students (email) WHERE email IS NOT NULL")
+  }
+  if (!cols.includes('status')) {
+    db.exec("ALTER TABLE students ADD COLUMN status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive'))")
+  }
+
   db.exec(`
     -- Contas de acesso (administradores e alunos)
     CREATE TABLE IF NOT EXISTS accounts (
@@ -19,10 +50,16 @@ function createTables() {
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       account_id INTEGER UNIQUE REFERENCES accounts(id) ON DELETE SET NULL,
       name       TEXT    NOT NULL,
+      email      TEXT,
       phone      TEXT,
       birth_date TEXT,
+      status     TEXT    NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
       created_at TEXT    NOT NULL DEFAULT (datetime('now'))
     );
+
+    -- E-mail único entre alunos (nullable — aluno sem conta pode não ter e-mail ainda)
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_students_email
+      ON students (email) WHERE email IS NOT NULL;
 
     -- Unidades da academia
     CREATE TABLE IF NOT EXISTS units (
@@ -74,8 +111,17 @@ function createTables() {
       installment_id  INTEGER NOT NULL UNIQUE REFERENCES installments(id) ON DELETE RESTRICT,
       paid_at         TEXT    NOT NULL,
       amount_paid     REAL    NOT NULL,
-      registered_by   INTEGER NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
+      registered_by   INTEGER REFERENCES accounts(id) ON DELETE RESTRICT,
       notes           TEXT
+    );
+
+    -- Sessões de autenticação
+    CREATE TABLE IF NOT EXISTS sessions (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      token      TEXT    NOT NULL UNIQUE,
+      expires_at TEXT    NOT NULL,
+      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
     );
   `)
 }

@@ -12,6 +12,7 @@ export default function StudentLayout({
   studentName,
   enrollment,
   accentColor,
+  onLogout,
   children,
 }) {
   return (
@@ -22,6 +23,7 @@ export default function StudentLayout({
         studentName={studentName}
         enrollment={enrollment}
         accentColor={accentColor}
+        onLogout={onLogout}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <PageHeader breadcrumb={breadcrumb} date={date} />

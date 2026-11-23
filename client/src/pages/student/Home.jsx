@@ -1,14 +1,63 @@
+import { useState, useEffect } from 'react'
 import Badge from '../../components/Badge'
 import Button from '../../components/Button'
+import Alert from '../../components/Alert'
 
-// Aluno demonstrativo: Lucas Ferreira
-// Muscle Power · Plano Semestral · R$ 55/mês · matrícula desde 20/06/2026
-// Situação financeira: em dia — Nov/2026 pago, Dez/2026 em aberto (vence 20/12)
+async function apiFetch(path) {
+  const res = await fetch(`/api${path}`, { credentials: 'include' })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Erro na requisição.')
+  return data
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—'
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
+function fmtPrice(v) {
+  return v?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'
+}
+
+function fmtCompetence(comp) {
+  if (!comp) return '—'
+  const [y, m] = comp.split('-')
+  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+  return `${months[parseInt(m) - 1]} de ${y}`
+}
+
 export default function StudentHome({ onNavigate }) {
+  const [data, setData]       = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState('')
+
+  useEffect(() => {
+    apiFetch('/portal/home')
+      .then(d => setData(d))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) {
+    return <p className="text-sm text-tx-muted py-8 text-center">Carregando...</p>
+  }
+  if (error) {
+    return <Alert variant="danger">{error}</Alert>
+  }
+
+  const { student, enrollment, finance, access } = data
+
+  if (!student) {
+    return <Alert variant="warning">Conta não vinculada a um cadastro de aluno.</Alert>
+  }
+
+  const firstName = student.name.split(' ')[0]
+
   return (
     <div>
       <div className="mb-7">
-        <h1 className="text-2xl font-bold text-tx-primary">Olá, Lucas</h1>
+        <h1 className="text-2xl font-bold text-tx-primary">Olá, {firstName}</h1>
         <p className="text-sm text-tx-dim mt-1">
           Acompanhe sua matrícula, mensalidades e o acesso às unidades.
         </p>
@@ -19,52 +68,112 @@ export default function StudentHome({ onNavigate }) {
         <div className="bg-card border border-border rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-tx-primary">Minha matrícula</h2>
-            <Badge variant="success">Ativa</Badge>
+            {enrollment ? (
+              <Badge variant="success">Ativa</Badge>
+            ) : (
+              <Badge variant="neutral">Sem matrícula</Badge>
+            )}
           </div>
-          <p className="text-lg font-semibold text-tx-primary mb-4">Lucas Ferreira</p>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-tx-muted">Número</span>
-              <span className="text-tx-primary font-medium">GD-0043</span>
+          <p className="text-lg font-semibold text-tx-primary mb-4">{student.name}</p>
+
+          {enrollment ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-tx-muted">Plano</span>
+                <span className="text-tx-primary font-medium">
+                  {enrollment.plan_name} · {fmtPrice(enrollment.plan_monthly_price)}/mês
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-tx-muted">Unidade de origem</span>
+                <span className={`font-medium ${enrollment.unit_slug === 'evolution' ? 'text-evolution' : 'text-power'}`}>
+                  {enrollment.unit_name}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-tx-muted">Período</span>
+                <span className="text-tx-primary">{fmtDate(enrollment.start_date)} → {fmtDate(enrollment.end_date)}</span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-tx-muted">Plano</span>
-              <span className="text-tx-primary font-medium">Semestral · R$ 55,00/mês</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-tx-muted">Unidade de origem</span>
-              <span className="text-power font-medium">Muscle Power</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-tx-muted">Início da matrícula</span>
-              <span className="text-tx-primary">20/06/2026</span>
-            </div>
-          </div>
+          ) : (
+            <p className="text-sm text-tx-muted">
+              Você não possui matrícula ativa no momento. Procure a recepção para mais informações.
+            </p>
+          )}
         </div>
 
         {/* Próxima mensalidade */}
         <div className="bg-card border border-border rounded-lg p-6">
-          <h2 className="text-base font-semibold text-tx-primary mb-4">Próxima mensalidade</h2>
-          <Badge variant="warning" className="mb-3">Em aberto · Ainda não vencida</Badge>
-          <p className="text-3xl font-bold text-tx-primary mt-2 mb-1">R$ 55,00</p>
-          <p className="text-sm text-tx-dim mb-1">Dezembro de 2026 · Vencimento em 20/12/2026</p>
-          <p className="text-xs text-success mb-5">Você não possui mensalidades em atraso.</p>
-          <Button variant="secondary" size="sm" onClick={() => onNavigate('finance')}>
-            Ver situação financeira
-          </Button>
+          <h2 className="text-base font-semibold text-tx-primary mb-4">Situação financeira</h2>
+
+          {!enrollment ? (
+            <p className="text-sm text-tx-muted">Sem matrícula ativa.</p>
+          ) : finance?.overdue_count > 0 ? (
+            <>
+              <Badge variant="danger" className="mb-3">
+                {finance.overdue_count} mensalidade{finance.overdue_count > 1 ? 's' : ''} em atraso
+              </Badge>
+              <p className="text-3xl font-bold text-danger mt-2 mb-1">{fmtPrice(finance.overdue_amount)}</p>
+              <p className="text-sm text-tx-dim mb-5">em mensalidades vencidas e não pagas.</p>
+            </>
+          ) : finance?.next_pending ? (
+            <>
+              <Badge variant="warning" className="mb-3">Em aberto · Ainda não vencida</Badge>
+              <p className="text-3xl font-bold text-tx-primary mt-2 mb-1">{fmtPrice(finance.next_pending.amount)}</p>
+              <p className="text-sm text-tx-dim mb-1">
+                {fmtCompetence(finance.next_pending.competence)} · Vencimento em {fmtDate(finance.next_pending.due_date)}
+              </p>
+              <p className="text-xs text-success mb-5">Você não possui mensalidades em atraso.</p>
+            </>
+          ) : (
+            <p className="text-sm text-success">Todas as mensalidades estão pagas.</p>
+          )}
+
+          {enrollment && (
+            <Button variant="secondary" size="sm" onClick={() => onNavigate('finance')}>
+              Ver situação financeira
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Resumo de acesso */}
-      <div className="bg-evolution-muted border border-evolution-border rounded-lg p-5 mb-5">
-        <p className="text-sm font-semibold text-evolution mb-1">
-          Acesso à Muscle Evolution permitido aos domingos
-        </p>
-        <p className="text-sm text-tx-dim">
-          Seu plano Muscle Power inclui acesso à Muscle Evolution somente aos domingos, das 08h às 12h.
-          Sua matrícula está ativa e não há mensalidades vencidas.
-        </p>
-      </div>
+      {access && (
+        <div className={`rounded-lg p-5 mb-5 ${
+          access.power.allowed || access.evolution.allowed
+            ? 'bg-evolution-muted border border-evolution-border'
+            : 'bg-danger/5 border border-danger/20'
+        }`}>
+          {enrollment.unit_slug === 'power' ? (
+            <>
+              <p className={`text-sm font-semibold mb-1 ${access.power.allowed ? 'text-evolution' : 'text-danger'}`}>
+                {access.power.allowed
+                  ? 'Acesso à Muscle Power autorizado'
+                  : `Acesso à Muscle Power: ${access.power.reason}`
+                }
+              </p>
+              <p className="text-sm text-tx-dim">
+                {access.evolution.allowed
+                  ? 'Acesso à Muscle Evolution também autorizado neste momento.'
+                  : `Muscle Evolution: ${access.evolution.reason}`
+                }
+              </p>
+            </>
+          ) : (
+            <>
+              <p className={`text-sm font-semibold mb-1 ${access.power.allowed && access.evolution.allowed ? 'text-evolution' : 'text-danger'}`}>
+                {access.evolution.allowed
+                  ? 'Acesso às duas unidades autorizado'
+                  : `Acesso: ${access.evolution.reason}`
+                }
+              </p>
+              <p className="text-sm text-tx-dim">
+                Seu plano Muscle Evolution inclui acesso às duas unidades.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Acesso rápido */}
       <div className="bg-card border border-border rounded-lg p-6">
