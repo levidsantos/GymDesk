@@ -142,7 +142,15 @@ Evite adicionar funcionalidades que não foram solicitadas.
   - Matrículas expiradas são encerradas automaticamente nas consultas.
 - Próxima etapa: refinamentos de interface e validação integrada.
 
-## 8. Orientações para alterações
+## 8. Servidores de desenvolvimento
+
+- O frontend (Vite) utiliza a porta **5173** e o backend (Express) utiliza a porta **3001**.
+- Antes de iniciar novos servidores, verificar se as portas estão ocupadas e, caso estejam, confirmar se os processos pertencem ao projeto antes de encerrá-los.
+- Evitar iniciar Vite e Express em segundo plano sem necessidade. Quando iniciados para testes, garantir que sejam encerrados ao finalizar.
+- Para verificar compilação sem iniciar servidores, preferir `npm run build --prefix client`.
+- Para liberar as portas antes de iniciar o projeto, utilizar `npm run dev:clean` na raiz.
+
+## 9. Orientações para alterações
 
 - Antes de modificar arquivos, analise a implementação existente.
 - Preserve funcionalidades e configurações que já estejam funcionando.
