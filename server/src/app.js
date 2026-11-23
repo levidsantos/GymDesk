@@ -14,6 +14,7 @@ const enrollmentsRouter = require('./routes/enrollments')
 const paymentsRouter    = require('./routes/payments')
 const accessRouter      = require('./routes/access')
 const portalRouter      = require('./routes/portal')
+const dashboardRouter   = require('./routes/dashboard')
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -38,6 +39,7 @@ app.use('/api/accounts',    authenticate, requireAdmin, requirePasswordChanged, 
 app.use('/api/students',    authenticate, requireAdmin, requirePasswordChanged, studentsRouter)
 app.use('/api/plans',       authenticate, requirePasswordChanged, plansRouter)
 app.use('/api/enrollments', authenticate, requireAdmin, requirePasswordChanged, enrollmentsRouter)
+app.use('/api/dashboard',   authenticate, requireAdmin, requirePasswordChanged, dashboardRouter)
 app.use('/api/portal',      authenticate, requirePasswordChanged, portalRouter)
 app.use('/api/access',      authenticate, requirePasswordChanged, accessRouter)
 app.use('/api',             authenticate, requireAdmin, requirePasswordChanged, paymentsRouter)
