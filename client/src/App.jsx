@@ -113,7 +113,7 @@ export default function App() {
       breadcrumb={breadcrumb}
       date={todayBR()}
       studentName={account.student_name || 'Aluno'}
-      enrollment=""
+      enrollment={account.unit_name && account.plan_name ? `${account.unit_name} · ${account.plan_name}` : ''}
       accentColor={unitColor}
       onLogout={handleLogout}
     >

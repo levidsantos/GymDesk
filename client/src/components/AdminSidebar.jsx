@@ -69,7 +69,7 @@ export default function AdminSidebar({ currentPage, onNavigate, accountName, onL
       {/* Usuário + Sair */}
       <div className="px-5 py-4 border-t border-border">
         <p className="text-sm text-tx-primary font-medium">{accountName || 'Administrador'}</p>
-        <p className="text-xs text-tx-muted mb-3">Administradora</p>
+        <p className="text-xs text-tx-muted mb-3">Admin</p>
         <button
           onClick={onLogout}
           className="
