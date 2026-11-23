@@ -91,6 +91,7 @@ export default function Students() {
   const [stuSuccess,  setStuSuccess]  = useState('')
   const [stuSaving,   setStuSaving]   = useState(false)
   const [inactivating, setInactivating] = useState(false)
+  const [reactivating, setReactivating] = useState(false)
 
   // ── Painel lateral — matrícula ─────────────────────────────────────────────
   const [activeEnrollment,  setActiveEnrollment]  = useState(null)  // matrícula ativa
@@ -211,6 +212,23 @@ export default function Students() {
       setStuError(e.message)
     } finally {
       setInactivating(false)
+    }
+  }
+
+  // ── Reativar aluno ────────────────────────────────────────────────────────
+
+  async function handleReactivateStudent() {
+    if (!window.confirm(`Reativar ${selected.name}?`)) return
+    setReactivating(true); setStuError('')
+    try {
+      const data = await apiFetch(`/students/${selected.id}/reactivate`, { method: 'PATCH' })
+      setSelected(data.student)
+      setStuSuccess('Aluno reativado com sucesso.')
+      fetchStudents(page, search, statusFilter)
+    } catch (e) {
+      setStuError(e.message)
+    } finally {
+      setReactivating(false)
     }
   }
 
@@ -442,6 +460,16 @@ export default function Students() {
                   className="w-full text-power border-power/30 hover:bg-power-muted"
                   onClick={handleInactivateStudent} disabled={inactivating}>
                   {inactivating ? 'Inativando...' : 'Inativar aluno'}
+                </Button>
+              </div>
+            )}
+
+            {panelMode === 'edit' && selected?.status === 'inactive' && (
+              <div className="mt-4">
+                <Button variant="secondary"
+                  className="w-full text-success border-success/30 hover:bg-success/10"
+                  onClick={handleReactivateStudent} disabled={reactivating}>
+                  {reactivating ? 'Reativando...' : 'Reativar aluno'}
                 </Button>
               </div>
             )}
