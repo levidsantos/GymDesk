@@ -177,4 +177,19 @@ router.patch('/:id/inactivate', (req, res) => {
   res.json({ student: formatStudent(updated) })
 })
 
+// ── PATCH /api/students/:id/reactivate ─────────────────────────────────────
+router.patch('/:id/reactivate', (req, res) => {
+  const db  = getDatabase()
+  const row = db.prepare('SELECT * FROM students WHERE id = ?').get(req.params.id)
+  if (!row) return res.status(404).json({ error: 'Aluno não encontrado.' })
+  if (row.status === 'active') {
+    return res.status(409).json({ error: 'O aluno já está ativo.' })
+  }
+
+  db.prepare("UPDATE students SET status = 'active' WHERE id = ?").run(row.id)
+
+  const updated = db.prepare('SELECT * FROM students WHERE id = ?').get(row.id)
+  res.json({ student: formatStudent(updated) })
+})
+
 module.exports = router
