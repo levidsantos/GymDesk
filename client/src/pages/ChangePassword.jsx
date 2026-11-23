@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Dumbbell, Eye, EyeOff } from 'lucide-react'
+import { apiFetch } from '../lib/api'
 import { Input, InputField } from '../components/Input'
 import Button from '../components/Button'
 import Alert from '../components/Alert'
@@ -31,14 +32,10 @@ export default function ChangePassword({ onSuccess, onLogout, isForced = true })
       const body = { new_password: newPassword }
       if (!isForced) body.current_password = currentPassword
 
-      const res = await fetch('/api/auth/change-password', {
+      await apiFetch('/auth/change-password', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erro ao alterar senha.')
       onSuccess?.()
     } catch (err) {
       setError(err.message)

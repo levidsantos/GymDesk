@@ -1,23 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Search, X } from 'lucide-react'
+import { apiFetch } from '../../lib/api'
 import { Input, InputField, Select } from '../../components/Input'
 import Button from '../../components/Button'
 import Badge from '../../components/Badge'
 import Alert from '../../components/Alert'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/Table'
-
-// ── API ──────────────────────────────────────────────────────────────────────
-
-async function apiFetch(path, options = {}) {
-  const res  = await fetch(`/api${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Erro na requisição.')
-  return data
-}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
