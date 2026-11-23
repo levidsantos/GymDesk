@@ -11,46 +11,43 @@ export default {
       },
       colors: {
         // ── Superfícies ──────────────────────────────────────────────
-        base:      '#0a0a0a',   // fundo da página
-        card:      '#111111',   // cards, tabelas
-        'card-alt':'#1a1a1a',   // cards alternativos, histórico
-        input:     '#161616',   // fundo de inputs e selects
+        base:      'rgb(var(--color-base) / <alpha-value>)',
+        card:      'rgb(var(--color-card) / <alpha-value>)',
+        'card-alt':'rgb(var(--color-card-alt) / <alpha-value>)',
+        input:     'rgb(var(--color-input) / <alpha-value>)',
 
         // ── Interação ────────────────────────────────────────────────
-        hover:          '#252525',   // hover de linhas e itens
-        active:         '#2e2e2e',   // item ativo na sidebar
-        border:         '#2a2a2a',   // bordas padrão
-        'border-strong':'#444444',   // bordas em hover/foco
+        hover:          'rgb(var(--color-hover) / <alpha-value>)',
+        active:         'rgb(var(--color-active) / <alpha-value>)',
+        border:         'rgb(var(--color-border) / <alpha-value>)',
+        'border-strong':'rgb(var(--color-border-strong) / <alpha-value>)',
 
         // ── Texto ────────────────────────────────────────────────────
-        // ⚠️  Mude aqui para ajustar legibilidade em todo o sistema
-        'tx-primary':  '#f5f5f5',   // títulos, texto principal
-        'tx-secondary':'#dbdbdb',   // texto de suporte nos componentes
-        'tx-dim':      '#a59a89',   // texto secundário (descrições, valores de tabela)
-        'tx-muted':    '#797979',   // rodapés, dicas, desabilitados
-        'tx-on-accent':'#ebebeb',   // texto SOBRE fundo amarelo (botão primário)
+        'tx-primary':  'rgb(var(--color-tx-primary) / <alpha-value>)',
+        'tx-secondary':'rgb(var(--color-tx-secondary) / <alpha-value>)',
+        'tx-dim':      'rgb(var(--color-tx-dim) / <alpha-value>)',
+        'tx-muted':    'rgb(var(--color-tx-muted) / <alpha-value>)',
+        'tx-on-accent':'rgb(var(--color-tx-on-accent) / <alpha-value>)',
 
         // ── Marca ────────────────────────────────────────────────────
-        // ⚠️  Mude aqui para trocar as cores das unidades
         evolution: {
-          DEFAULT: '#eab308',
-          hover:   '#ca8a04',
-          muted:   '#eab30818',
-          border:  '#eab30840',
+          DEFAULT: 'rgb(var(--color-evolution) / <alpha-value>)',
+          hover:   'rgb(var(--color-evolution-hover) / <alpha-value>)',
+          muted:   'var(--color-evolution-muted)',
+          border:  'var(--color-evolution-border)',
         },
         power: {
-          DEFAULT: '#dc2626',
-          hover:   '#b91c1c',
-          muted:   '#dc262618',
-          border:  '#dc262640',
+          DEFAULT: 'rgb(var(--color-power) / <alpha-value>)',
+          hover:   'rgb(var(--color-power-hover) / <alpha-value>)',
+          muted:   'var(--color-power-muted)',
+          border:  'var(--color-power-border)',
         },
 
         // ── Semânticas ───────────────────────────────────────────────
-        // ⚠️  Mude aqui para ajustar as cores de status
-        success: '#22c55e',
-        warning: '#f59e0b',
-        danger:  '#ef4444',
-        info:    '#3b82f6',
+        success: 'rgb(var(--color-success) / <alpha-value>)',
+        warning: 'rgb(var(--color-warning) / <alpha-value>)',
+        danger:  'rgb(var(--color-danger) / <alpha-value>)',
+        info:    'rgb(var(--color-info) / <alpha-value>)',
       },
     },
   },

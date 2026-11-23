@@ -10,6 +10,7 @@
  */
 import { useEffect } from 'react'
 import { Home, Wallet, ShieldCheck, LogOut, Dumbbell, X } from 'lucide-react'
+import ThemeToggle from './ThemeToggle'
 
 const navItems = [
   { label: 'Página inicial',      icon: Home,        page: 'home'    },
@@ -22,7 +23,7 @@ export default function StudentSidebar({
   onNavigate,
   studentName,
   enrollment,
-  accentColor = '#eab308',
+  accentColor = 'rgb(var(--color-evolution))',
   onLogout,
   mobile = false,
   open = false,
@@ -103,7 +104,14 @@ export default function StudentSidebar({
             <span className="text-sm text-tx-secondary">{unit}</span>
           </div>
         ))}
+
       </nav>
+
+      {/* Tema */}
+      <div className="px-5 py-3 flex items-center justify-between">
+        <span className="text-[11px] text-tx-muted">Tema</span>
+        <ThemeToggle />
+      </div>
 
       {/* Aluno + Sair */}
       <div className="px-5 py-4 border-t border-border">

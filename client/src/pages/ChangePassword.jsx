@@ -3,6 +3,7 @@ import { Dumbbell, Eye, EyeOff } from 'lucide-react'
 import { Input, InputField } from '../components/Input'
 import Button from '../components/Button'
 import Alert from '../components/Alert'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function ChangePassword({ onSuccess, onLogout, isForced = true }) {
   const [currentPassword, setCurrentPassword] = useState('')
@@ -53,6 +54,7 @@ export default function ChangePassword({ onSuccess, onLogout, isForced = true })
           <Dumbbell size={20} className="text-evolution" />
           <span className="font-bold text-tx-primary tracking-tight">GymDesk</span>
         </div>
+        <ThemeToggle />
       </header>
 
       <div className="flex-1 flex items-center justify-center px-4 py-16">
