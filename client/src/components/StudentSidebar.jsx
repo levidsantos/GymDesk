@@ -1,14 +1,15 @@
 /**
  * StudentSidebar — navegação lateral da área do aluno
  *
- * accentColor: 'evolution' | 'power'  (padrão: 'evolution')
- * Aceita a string do token Tailwind, não hex avulso.
+ * Desktop: renderizado diretamente como aside fixa.
+ * Mobile (mobile=true): renderizado como drawer overlay com backdrop.
  *
  * ⚠️  Bordas e ícone do logo usam style inline porque o valor do token
  *     varia dinamicamente por unidade do aluno (Power = vermelho, Evolution = amarelo).
  *     O resto usa tokens de tailwind.config.js.
  */
-import { Home, Wallet, ShieldCheck, LogOut, Dumbbell } from 'lucide-react'
+import { useEffect } from 'react'
+import { Home, Wallet, ShieldCheck, LogOut, Dumbbell, X } from 'lucide-react'
 
 const navItems = [
   { label: 'Página inicial',      icon: Home,        page: 'home'    },
@@ -16,7 +17,6 @@ const navItems = [
   { label: 'Regras de acesso',    icon: ShieldCheck,  page: 'rules'   },
 ]
 
-// accentColor recebe o valor hex vindo do App.jsx (ex: '#dc2626' ou '#eab308')
 export default function StudentSidebar({
   currentPage,
   onNavigate,
@@ -24,20 +24,43 @@ export default function StudentSidebar({
   enrollment,
   accentColor = '#eab308',
   onLogout,
+  mobile = false,
+  open = false,
+  onClose,
 }) {
-  return (
-    <aside className="
-      w-[220px] min-w-[220px] h-screen sticky top-0
+  useEffect(() => {
+    if (!mobile || !open) return
+    const handler = (e) => { if (e.key === 'Escape') onClose?.() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [mobile, open, onClose])
+
+  if (mobile && !open) return null
+
+  const sidebar = (
+    <aside className={`
+      w-[220px] min-w-[220px] h-screen
       bg-card border-r border-border
       flex flex-col overflow-y-auto
-    ">
+      ${mobile ? '' : 'sticky top-0'}
+    `}>
       {/* Logo */}
-      <div className="px-5 pt-6 pb-5 border-b border-border">
-        <div className="flex items-center gap-2 mb-0.5">
-          <Dumbbell size={18} style={{ color: accentColor }} />
-          <span className="font-bold text-base text-tx-primary tracking-tight">GymDesk</span>
+      <div className="px-5 pt-6 pb-5 border-b border-border flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <Dumbbell size={18} style={{ color: accentColor }} />
+            <span className="font-bold text-base text-tx-primary tracking-tight">GymDesk</span>
+          </div>
+          <span className="text-[11px] text-tx-muted">Área do aluno</span>
         </div>
-        <span className="text-[11px] text-tx-muted">Área do aluno</span>
+        {mobile && (
+          <button
+            onClick={onClose}
+            className="p-1 text-tx-muted hover:text-tx-primary transition-colors"
+          >
+            <X size={16} />
+          </button>
+        )}
       </div>
 
       {/* Navegação */}
@@ -98,5 +121,22 @@ export default function StudentSidebar({
         </button>
       </div>
     </aside>
+  )
+
+  if (!mobile) return sidebar
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex md:hidden"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose?.() }}
+    >
+      <div
+        className="fixed inset-0 bg-black/60"
+        onClick={onClose}
+      />
+      <div className="relative z-10">
+        {sidebar}
+      </div>
+    </div>
   )
 }

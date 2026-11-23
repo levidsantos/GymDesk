@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
+    "dev:clean": "powershell -ExecutionPolicy Bypass -File scripts/kill-ports.ps1 && npm run dev",
     "install:all": "npm install && npm install --prefix client && npm install --prefix server"
   },
   "devDependencies": {
