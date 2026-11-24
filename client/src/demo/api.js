@@ -517,11 +517,11 @@ route('POST', '/installments/:id/pay', (body, _query, params) => {
 // ── GET /payments ───────────────────────────────────────────────────────────
 
 route('GET', '/payments', (_body, query) => {
-  const { page = '1', limit = '30' } = query
+  const { search = '', unit_id, paid_at_from, paid_at_to, page = '1', limit = '15' } = query
   const pageNum = Math.max(1, parseInt(page) || 1)
-  const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 30))
+  const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 15))
 
-  const items = db.payments.map(p => {
+  let items = db.payments.map(p => {
     const inst = db.installments.find(i => i.id === p.installment_id)
     const e = db.enrollments.find(en => en.id === inst.enrollment_id)
     const s = db.students.find(st => st.id === e.student_id)
@@ -529,9 +529,19 @@ route('GET', '/payments', (_body, query) => {
     return {
       id: p.id, installment_id: p.installment_id, paid_at: p.paid_at, amount_paid: p.amount_paid, notes: p.notes,
       competence: inst.competence, due_date: inst.due_date, student_name: s.name, unit_name: plan.unit_name, unit_slug: plan.unit_slug, plan_name: plan.name,
+      unit_id: plan.unit_id,
     }
-  }).sort((a, b) => b.paid_at.localeCompare(a.paid_at))
+  })
 
+  if (search.trim()) {
+    const term = search.trim().toLowerCase()
+    items = items.filter(i => i.student_name.toLowerCase().includes(term))
+  }
+  if (unit_id) items = items.filter(i => i.unit_id === Number(unit_id))
+  if (paid_at_from) items = items.filter(i => i.paid_at >= paid_at_from)
+  if (paid_at_to) items = items.filter(i => i.paid_at <= paid_at_to)
+
+  items.sort((a, b) => b.paid_at.localeCompare(a.paid_at))
   const total = items.length
   const start = (pageNum - 1) * pageSize
   return ok({ payments: items.slice(start, start + pageSize), total, page: pageNum, totalPages: Math.ceil(total / pageSize) })

@@ -185,13 +185,47 @@ router.post('/installments/:id/pay', (req, res) => {
 // Histórico de pagamentos
 router.get('/payments', (req, res) => {
   const db = getDatabase()
-  const { page = 1, limit = 30 } = req.query
+  const { search = '', unit_id, paid_at_from, paid_at_to, page = 1, limit = 15 } = req.query
 
   const pageNum  = Math.max(1, parseInt(page)  || 1)
-  const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 30))
+  const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 15))
   const offset   = (pageNum - 1) * pageSize
 
-  const total = db.prepare('SELECT COUNT(*) AS n FROM payments').get().n
+  const where  = []
+  const params = []
+
+  if (search.trim()) {
+    where.push('s.name LIKE ?')
+    params.push(`%${search.trim()}%`)
+  }
+
+  if (unit_id) {
+    where.push('u.id = ?')
+    params.push(Number(unit_id))
+  }
+
+  if (paid_at_from) {
+    where.push('py.paid_at >= ?')
+    params.push(paid_at_from)
+  }
+
+  if (paid_at_to) {
+    where.push('py.paid_at <= ?')
+    params.push(paid_at_to)
+  }
+
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : ''
+
+  const baseJoins = `
+    FROM payments py
+    JOIN installments i ON i.id = py.installment_id
+    JOIN enrollments  e ON e.id = i.enrollment_id
+    JOIN students     s ON s.id = e.student_id
+    JOIN plans        p ON p.id = e.plan_id
+    JOIN units        u ON u.id = p.unit_id
+  `
+
+  const total = db.prepare(`SELECT COUNT(*) AS n ${baseJoins} ${clause}`).get(...params).n
 
   const rows = db.prepare(`
     SELECT py.*,
@@ -199,15 +233,11 @@ router.get('/payments', (req, res) => {
            s.name AS student_name,
            u.name AS unit_name, u.slug AS unit_slug,
            p.name AS plan_name
-    FROM payments py
-    JOIN installments i ON i.id = py.installment_id
-    JOIN enrollments  e ON e.id = i.enrollment_id
-    JOIN students     s ON s.id = e.student_id
-    JOIN plans        p ON p.id = e.plan_id
-    JOIN units        u ON u.id = p.unit_id
+    ${baseJoins}
+    ${clause}
     ORDER BY py.paid_at DESC, py.id DESC
     LIMIT ? OFFSET ?
-  `).all(pageSize, offset)
+  `).all(...params, pageSize, offset)
 
   res.json({
     payments: rows.map(r => ({
