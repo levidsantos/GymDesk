@@ -616,7 +616,10 @@ route('GET', '/portal/home', () => {
   expireMaturedEnrollments()
 
   const student = db.students.find(s => s.account_id === currentAccount.id)
-  if (!student) return ok({ student: null, enrollment: null, finance: null, access: null })
+  if (!student) {
+    const contacts = db.units.map(u => ({ slug: u.slug, name: u.name, phone: u.phone, email: u.email }))
+    return ok({ student: null, enrollment: null, finance: null, access: null, contacts })
+  }
 
   const t = today()
   const enrollment = getActiveEnrollment(student.id)
@@ -644,7 +647,15 @@ route('GET', '/portal/home', () => {
     }
   }
 
-  return ok({ student: { id: student.id, name: student.name, status: student.status }, enrollment: enrollmentData, finance, access })
+  let contacts
+  if (enrollment) {
+    const unit = db.units.find(u => u.slug === enrollmentData.unit_slug)
+    contacts = unit ? [{ slug: unit.slug, name: unit.name, phone: unit.phone, email: unit.email }] : []
+  } else {
+    contacts = db.units.map(u => ({ slug: u.slug, name: u.name, phone: u.phone, email: u.email }))
+  }
+
+  return ok({ student: { id: student.id, name: student.name, status: student.status }, enrollment: enrollmentData, finance, access, contacts })
 })
 
 // ── GET /portal/finance ─────────────────────────────────────────────────────

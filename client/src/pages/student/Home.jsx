@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiFetch } from '../../lib/api'
+import { Phone, Mail } from 'lucide-react'
 import Badge from '../../components/Badge'
 import Button from '../../components/Button'
 import Alert from '../../components/Alert'
@@ -12,6 +13,13 @@ function fmtDate(iso) {
 
 function fmtPrice(v) {
   return v?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? '—'
+}
+
+function fmtPhone(raw) {
+  if (!raw) return null
+  const d = raw.replace(/\D/g, '')
+  if (d.length === 13) return `+${d.slice(0,2)} (${d.slice(2,4)}) ${d.slice(4,9)}-${d.slice(9)}`
+  return raw
 }
 
 function fmtCompetence(comp) {
@@ -40,7 +48,7 @@ export default function StudentHome({ onNavigate }) {
     return <Alert variant="danger">{error}</Alert>
   }
 
-  const { student, enrollment, finance, access } = data
+  const { student, enrollment, finance, access, contacts } = data
 
   if (!student) {
     return <Alert variant="warning">Conta não vinculada a um cadastro de aluno.</Alert>
@@ -190,9 +198,47 @@ export default function StudentHome({ onNavigate }) {
         </div>
       </div>
 
-      <p className="text-xs text-tx-muted mt-5 text-center">
-        Para atualizar dados da matrícula ou informar um pagamento, procure a recepção da sua unidade.
-      </p>
+      {contacts && contacts.length > 0 && (
+        <div className="bg-card border border-border rounded-lg p-6 mt-5">
+          <h2 className="text-base font-semibold text-tx-primary mb-4">
+            {enrollment ? 'Contato da sua unidade' : 'Contato das unidades'}
+          </h2>
+          <div className={`grid grid-cols-1 ${contacts.length > 1 ? 'xl:grid-cols-2' : ''} gap-5`}>
+            {contacts.map(c => (
+              <div key={c.slug}>
+                <p className={`text-sm font-semibold mb-2 ${c.slug === 'evolution' ? 'text-evolution' : 'text-power'}`}>
+                  {c.name}
+                </p>
+                <div className="space-y-1.5">
+                  {c.phone && (
+                    <a
+                      href={`https://wa.me/${c.phone.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-tx-muted hover:text-tx-primary transition-colors"
+                    >
+                      <Phone size={14} />
+                      {fmtPhone(c.phone)}
+                    </a>
+                  )}
+                  {c.email && (
+                    <a
+                      href={`mailto:${c.email}`}
+                      className="flex items-center gap-2 text-sm text-tx-muted hover:text-tx-primary transition-colors"
+                    >
+                      <Mail size={14} />
+                      {c.email}
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-tx-dim mt-4">
+            Para atualizar dados da matrícula ou informar um pagamento, entre em contato com a recepção.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

@@ -2,8 +2,8 @@ const { getDatabase } = require('./db')
 const bcrypt = require('bcryptjs')
 
 const UNITS = [
-  { slug: 'power',     name: 'Muscle Power'     },
-  { slug: 'evolution', name: 'Muscle Evolution'  },
+  { slug: 'power',     name: 'Muscle Power',     phone: '5511900001111', email: 'contato@musclepower.com.br'     },
+  { slug: 'evolution', name: 'Muscle Evolution',  phone: '5511900002222', email: 'contato@muscleevolution.com.br' },
 ]
 
 const PLANS = [
@@ -22,7 +22,11 @@ function seedDatabase() {
   const db = getDatabase()
 
   const insertUnit = db.prepare(`
-    INSERT OR IGNORE INTO units (slug, name) VALUES (?, ?)
+    INSERT OR IGNORE INTO units (slug, name, phone, email) VALUES (?, ?, ?, ?)
+  `)
+
+  const updateUnitContact = db.prepare(`
+    UPDATE units SET phone = ?, email = ? WHERE slug = ? AND (phone IS NULL OR email IS NULL)
   `)
 
   const insertPlan = db.prepare(`
@@ -33,7 +37,8 @@ function seedDatabase() {
 
   const runSeed = db.transaction(() => {
     for (const unit of UNITS) {
-      insertUnit.run(unit.slug, unit.name)
+      insertUnit.run(unit.slug, unit.name, unit.phone, unit.email)
+      updateUnitContact.run(unit.phone, unit.email, unit.slug)
     }
     for (const plan of PLANS) {
       insertPlan.run(plan.name, plan.duration_months, plan.monthly_price, plan.unit_slug)

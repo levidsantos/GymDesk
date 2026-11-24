@@ -34,6 +34,15 @@ function createTables() {
     db.exec("ALTER TABLE students ADD COLUMN status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive'))")
   }
 
+  // Migração: adiciona phone e email na tabela units (contatos da academia)
+  const unitCols = db.pragma('table_info(units)').map(c => c.name)
+  if (!unitCols.includes('phone')) {
+    db.exec("ALTER TABLE units ADD COLUMN phone TEXT")
+  }
+  if (!unitCols.includes('email')) {
+    db.exec("ALTER TABLE units ADD COLUMN email TEXT")
+  }
+
   db.exec(`
     -- Contas de acesso (administradores e alunos)
     CREATE TABLE IF NOT EXISTS accounts (
@@ -63,9 +72,11 @@ function createTables() {
 
     -- Unidades da academia
     CREATE TABLE IF NOT EXISTS units (
-      id   INTEGER PRIMARY KEY AUTOINCREMENT,
-      slug TEXT    NOT NULL UNIQUE,
-      name TEXT    NOT NULL
+      id    INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug  TEXT    NOT NULL UNIQUE,
+      name  TEXT    NOT NULL,
+      phone TEXT,
+      email TEXT
     );
 
     -- Planos predefinidos por unidade
