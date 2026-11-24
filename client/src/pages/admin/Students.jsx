@@ -41,6 +41,7 @@ export default function Students() {
   const [statusFilter, setStatusFilter] = useState('active')
   const [loading,      setLoading]      = useState(false)
   const [listError,    setListError]    = useState('')
+  const [inactiveCount, setInactiveCount] = useState(0)
 
   const fetchStudents = useCallback(async (p, s, st) => {
     setLoading(true)
@@ -60,6 +61,12 @@ export default function Students() {
   }, [])
 
   useEffect(() => { fetchStudents(1, '', 'active') }, [fetchStudents])
+
+  useEffect(() => {
+    apiFetch('/students?status=inactive&limit=1')
+      .then(d => setInactiveCount(d.total))
+      .catch(() => {})
+  }, [students])
 
   function handleSearch(e) {
     e.preventDefault()
@@ -190,11 +197,14 @@ export default function Students() {
   // ── Inativar aluno ─────────────────────────────────────────────────────────
 
   async function handleInactivateStudent() {
-    if (!window.confirm(`Inativar ${selected.name}? O histórico financeiro será preservado.`)) return
+    if (!window.confirm(`Inativar ${selected.name}?\n\nA matrícula ativa será encerrada automaticamente e mensalidades futuras ainda não pagas serão canceladas.\n\nO histórico financeiro será preservado.`)) return
     setInactivating(true); setStuError('')
     try {
       await apiFetch(`/students/${selected.id}/inactivate`, { method: 'PATCH' })
-      closePanel()
+      const data = await apiFetch(`/students/${selected.id}`)
+      setSelected(data.student)
+      setActiveEnrollment(null)
+      setStuSuccess('Aluno inativado com sucesso.')
       fetchStudents(page, search, statusFilter)
     } catch (e) {
       setStuError(e.message)
@@ -245,14 +255,15 @@ export default function Students() {
     }
   }
 
-  // ── Inativar matrícula ─────────────────────────────────────────────────────
+  // ── Cancelar matrícula ──────────────────────────────────────────────────────
 
   async function handleInactivateEnrollment() {
-    if (!window.confirm('Inativar esta matrícula? Mensalidades futuras serão canceladas.')) return
+    if (!window.confirm('Cancelar esta matrícula? Mensalidades futuras ainda não pagas serão canceladas. O cadastro do aluno permanecerá ativo.')) return
     setEnrollInactivating(true); setEnrollError('')
     try {
       await apiFetch(`/enrollments/${activeEnrollment.id}/inactivate`, { method: 'PATCH' })
       await loadActiveEnrollment(selected.id)
+      setStuSuccess('Matrícula cancelada com sucesso.')
     } catch (e) {
       setEnrollError(e.message)
     } finally {
@@ -322,7 +333,7 @@ export default function Students() {
                 onChange={(e) => handleStatusFilter(e.target.value)}
               >
                 <option value="active">Ativos</option>
-                <option value="inactive">Inativos</option>
+                <option value="inactive">Inativos{inactiveCount > 0 ? ` (${inactiveCount})` : ''}</option>
                 <option value="all">Todos</option>
               </Select>
               <Button type="submit" variant="secondary">Pesquisar</Button>
@@ -529,7 +540,7 @@ export default function Students() {
                     <Button variant="secondary"
                       className="w-full text-power border-power/30 hover:bg-power-muted"
                       onClick={handleInactivateEnrollment} disabled={enrollInactivating}>
-                      {enrollInactivating ? 'Inativando...' : 'Inativar matrícula'}
+                      {enrollInactivating ? 'Cancelando...' : 'Cancelar matrícula'}
                     </Button>
                     <p className="text-xs text-tx-muted text-center">Mensalidades futuras serão canceladas.</p>
                   </div>
