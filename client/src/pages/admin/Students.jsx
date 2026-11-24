@@ -172,10 +172,10 @@ export default function Students() {
         birth_date: studentForm.birth_date        || null,
       }
       if (panelMode === 'new') {
-        await apiFetch('/students', { method: 'POST', body: JSON.stringify(body) })
+        const data = await apiFetch('/students', { method: 'POST', body: JSON.stringify(body) })
         toast.success('Aluno cadastrado com sucesso.')
-        setStudentForm(emptyStudentForm)
         fetchStudents(1, search, statusFilter)
+        await openEdit(data.student)
       } else {
         const data = await apiFetch(`/students/${selected.id}`, { method: 'PUT', body: JSON.stringify(body) })
         setSelected(data.student)
@@ -243,6 +243,7 @@ export default function Students() {
       setShowEnrollForm(false)
       setEnrollForm(emptyEnrollForm)
       await loadActiveEnrollment(selected.id)
+      toast.success('Matrícula registrada com sucesso.')
     } catch (e) {
       setEnrollError(e.message)
     } finally {
@@ -415,7 +416,20 @@ export default function Students() {
             <h2 className="text-base font-semibold text-tx-primary mb-1">
               {panelMode === 'new' ? 'Cadastrar aluno' : 'Editar aluno'}
             </h2>
-            <p className="text-xs text-tx-muted mb-5">Dados cadastrais do aluno.</p>
+            <p className="text-xs text-tx-muted mb-3">Dados cadastrais do aluno.</p>
+
+            {panelMode === 'edit' && selected && (
+              <div className="flex flex-wrap gap-2 mb-5">
+                <Badge variant="success">Cadastro</Badge>
+                <Badge variant={selected.account_id ? 'success' : 'neutral'}>
+                  {selected.account_id ? 'Conta criada' : 'Sem conta'}
+                </Badge>
+                <Badge variant={activeEnrollment ? 'success' : 'neutral'}>
+                  {activeEnrollment ? 'Matrícula ativa' : 'Sem matrícula'}
+                </Badge>
+              </div>
+            )}
+
 
             {stuError   && <Alert variant="danger"  className="mb-4">{stuError}</Alert>}
 
