@@ -6,6 +6,7 @@ import Button from '../../components/Button'
 import Badge from '../../components/Badge'
 import Alert from '../../components/Alert'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/Table'
+import { useToast } from '../../components/Toast'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,8 @@ const todayISO = () => new Date().toISOString().slice(0, 10)
 // ── Componente ───────────────────────────────────────────────────────────────
 
 export default function Payments() {
+  const toast = useToast()
+
   // ── Mensalidades ───────────────────────────────────────────────────────────
   const [installments, setInstallments] = useState([])
   const [total,        setTotal]        = useState(0)
@@ -112,6 +115,7 @@ export default function Payments() {
       })
       setLastPayment({ installment: data.installment, payment: data.payment })
       setSelected(null)
+      toast.success('Pagamento registrado com sucesso.')
       fetchInstallments(page, search, statusFilter)
       fetchHistory()
     } catch (e) {
