@@ -69,7 +69,7 @@ export default function Payments() {
     setLoading(true)
     setListError('')
     try {
-      const params = new URLSearchParams({ page: p, limit: 30 })
+      const params = new URLSearchParams({ page: p, limit: 12 })
       if (filters.search)    params.set('search', filters.search)
       if (filters.status && filters.status !== 'all') params.set('status', filters.status)
       if (filters.unit_id)   params.set('unit_id', filters.unit_id)
@@ -162,7 +162,7 @@ export default function Payments() {
 
   const fetchHistory = useCallback(async (p = 1, filters = {}) => {
     try {
-      const params = new URLSearchParams({ page: p, limit: 15 })
+      const params = new URLSearchParams({ page: p, limit: 12 })
       if (filters.search)   params.set('search', filters.search)
       if (filters.unit_id)  params.set('unit_id', filters.unit_id)
       if (filters.dateFrom) params.set('paid_at_from', filters.dateFrom)
@@ -186,8 +186,8 @@ export default function Payments() {
   // ── Resumo financeiro (totais do backend, não apenas da página) ─────────
   const [summary, setSummary] = useState({ overdue: 0, pending: 0, paid: 0 })
 
-  const rangeStart = total === 0 ? 0 : (page - 1) * 30 + 1
-  const rangeEnd   = Math.min(page * 30, total)
+  const rangeStart = total === 0 ? 0 : (page - 1) * 12 + 1
+  const rangeEnd   = Math.min(page * 12, total)
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -201,8 +201,8 @@ export default function Payments() {
       </div>
 
       {/* Filtros */}
-      <form onSubmit={handleSearch} className="flex flex-col gap-3 mb-6">
-        <div className="flex flex-col sm:flex-row gap-3">
+      <form onSubmit={handleSearch} className="mb-6 space-y-3">
+        <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
             <Input
@@ -212,35 +212,39 @@ export default function Payments() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Select
-            className="sm:w-44"
-            value={unitFilter}
-            onChange={(e) => { setUnitFilter(e.target.value); fetchInstallments(1, { ...currentFilters(), unit_id: e.target.value }) }}
-          >
-            <option value="">Todas as unidades</option>
-            {units.map(u => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </Select>
-          <Select
-            className="sm:w-44"
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); fetchInstallments(1, { ...currentFilters(), status: e.target.value }) }}
-          >
-            <option value="all">Todas as situações</option>
-            <option value="pending">Em aberto</option>
-            <option value="overdue">Em atraso</option>
-            <option value="paid">Pagas</option>
-            <option value="cancelled">Canceladas</option>
-          </Select>
+          <div className="md:w-44">
+            <Select
+              value={unitFilter}
+              onChange={(e) => { setUnitFilter(e.target.value); fetchInstallments(1, { ...currentFilters(), unit_id: e.target.value }) }}
+            >
+              <option value="">Todas as unidades</option>
+              {units.map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="md:w-44">
+            <Select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); fetchInstallments(1, { ...currentFilters(), status: e.target.value }) }}
+            >
+              <option value="all">Todas as situações</option>
+              <option value="pending">Em aberto</option>
+              <option value="overdue">Em atraso</option>
+              <option value="paid">Pagas</option>
+              <option value="cancelled">Canceladas</option>
+            </Select>
+          </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 items-end">
-          <InputField label="Vencimento de" className="flex-1 sm:flex-initial">
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </InputField>
-          <InputField label="Vencimento até" className="flex-1 sm:flex-initial">
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </InputField>
+          <div className="flex gap-3 flex-1 sm:flex-initial">
+            <InputField label="Vencimento de" className="flex-1 sm:w-40">
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </InputField>
+            <InputField label="até" className="flex-1 sm:w-40">
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </InputField>
+          </div>
           <div className="flex gap-3">
             <Button type="submit" variant="secondary">Pesquisar</Button>
             {(search || unitFilter || statusFilter !== 'all' || dateFrom || dateTo) && (
@@ -340,36 +344,42 @@ export default function Payments() {
             <h2 className="text-lg font-semibold text-tx-primary mb-4">Histórico de pagamentos</h2>
 
             <form onSubmit={(e) => { e.preventDefault(); fetchHistory(1, historyFilters()) }}
-              className="flex flex-col sm:flex-row gap-3 mb-4">
-              <div className="flex-1 relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
-                <Input placeholder="Pesquisar aluno" className="pl-9"
-                  value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
+              className="mb-4 space-y-3">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
+                  <Input placeholder="Pesquisar aluno" className="pl-9"
+                    value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
+                </div>
+                <div className="md:w-44">
+                  <Select value={historyUnit}
+                    onChange={(e) => { setHistoryUnit(e.target.value); fetchHistory(1, { ...historyFilters(), unit_id: e.target.value }) }}>
+                    <option value="">Todas as unidades</option>
+                    {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </Select>
+                </div>
               </div>
-              <Select className="sm:w-44" value={historyUnit}
-                onChange={(e) => { setHistoryUnit(e.target.value); fetchHistory(1, { ...historyFilters(), unit_id: e.target.value }) }}>
-                <option value="">Todas as unidades</option>
-                {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </Select>
+              <div className="flex flex-col sm:flex-row gap-3 items-end">
+                <div className="flex gap-3 flex-1 sm:flex-initial">
+                  <InputField label="Recebido de" className="flex-1 sm:w-40">
+                    <Input type="date" value={historyDateFrom} onChange={(e) => setHistoryDateFrom(e.target.value)} />
+                  </InputField>
+                  <InputField label="até" className="flex-1 sm:w-40">
+                    <Input type="date" value={historyDateTo} onChange={(e) => setHistoryDateTo(e.target.value)} />
+                  </InputField>
+                </div>
+                <div className="flex gap-3">
+                  <Button type="button" variant="secondary"
+                    onClick={() => fetchHistory(1, historyFilters())}>Pesquisar</Button>
+                  {(historySearch || historyUnit || historyDateFrom || historyDateTo) && (
+                    <Button type="button" variant="ghost" onClick={() => {
+                      setHistorySearch(''); setHistoryUnit(''); setHistoryDateFrom(''); setHistoryDateTo('')
+                      fetchHistory(1)
+                    }}>Limpar</Button>
+                  )}
+                </div>
+              </div>
             </form>
-            <div className="flex flex-col sm:flex-row gap-3 mb-4 items-end">
-              <InputField label="Recebido de" className="flex-1 sm:flex-initial">
-                <Input type="date" value={historyDateFrom} onChange={(e) => setHistoryDateFrom(e.target.value)} />
-              </InputField>
-              <InputField label="Recebido até" className="flex-1 sm:flex-initial">
-                <Input type="date" value={historyDateTo} onChange={(e) => setHistoryDateTo(e.target.value)} />
-              </InputField>
-              <div className="flex gap-3">
-                <Button type="button" variant="secondary"
-                  onClick={() => fetchHistory(1, historyFilters())}>Pesquisar</Button>
-                {(historySearch || historyUnit || historyDateFrom || historyDateTo) && (
-                  <Button type="button" variant="ghost" onClick={() => {
-                    setHistorySearch(''); setHistoryUnit(''); setHistoryDateFrom(''); setHistoryDateTo('')
-                    fetchHistory(1)
-                  }}>Limpar</Button>
-                )}
-              </div>
-            </div>
 
             {historyError && <Alert variant="danger" className="mb-4">{historyError}</Alert>}
 
@@ -404,7 +414,7 @@ export default function Payments() {
 
             <div className="flex items-center justify-between mt-4">
               <span className="text-xs text-tx-muted">
-                {historyTotal === 0 ? '0 pagamentos' : `${(historyPage - 1) * 15 + 1}–${Math.min(historyPage * 15, historyTotal)} de ${historyTotal}`}
+                {historyTotal === 0 ? '0 pagamentos' : `${(historyPage - 1) * 12 + 1}–${Math.min(historyPage * 12, historyTotal)} de ${historyTotal}`}
               </span>
               <div className="flex gap-2">
                 <Button size="sm" variant="secondary" disabled={historyPage <= 1}
