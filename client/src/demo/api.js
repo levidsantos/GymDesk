@@ -443,7 +443,7 @@ route('POST', '/accounts', (body) => {
 
 route('GET', '/installments', (_body, query) => {
   const t = today()
-  const { search = '', status = 'all', unit_id, page = '1', limit = '30' } = query
+  const { search = '', status = 'all', unit_id, due_date_from, due_date_to, page = '1', limit = '30' } = query
   const pageNum = Math.max(1, parseInt(page) || 1)
   const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 30))
 
@@ -459,6 +459,8 @@ route('GET', '/installments', (_body, query) => {
     items = items.filter(i => i.student_name.toLowerCase().includes(term))
   }
   if (unit_id) items = items.filter(i => i.unit_id === Number(unit_id))
+  if (due_date_from) items = items.filter(i => i.due_date >= due_date_from)
+  if (due_date_to) items = items.filter(i => i.due_date <= due_date_to)
   if (status === 'overdue') items = items.filter(i => i.status === 'pending' && i.due_date < t)
   else if (status !== 'all') items = items.filter(i => i.status === status)
 

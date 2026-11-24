@@ -48,7 +48,7 @@ router.get('/installments', (req, res) => {
   const db = getDatabase()
   const today = new Date().toISOString().slice(0, 10)
 
-  const { search = '', status = 'all', unit_id, page = 1, limit = 30 } = req.query
+  const { search = '', status = 'all', unit_id, due_date_from, due_date_to, page = 1, limit = 30 } = req.query
 
   const pageNum  = Math.max(1, parseInt(page)  || 1)
   const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 30))
@@ -65,6 +65,16 @@ router.get('/installments', (req, res) => {
   if (unit_id) {
     where.push('u.id = ?')
     params.push(Number(unit_id))
+  }
+
+  if (due_date_from) {
+    where.push('i.due_date >= ?')
+    params.push(due_date_from)
+  }
+
+  if (due_date_to) {
+    where.push('i.due_date <= ?')
+    params.push(due_date_to)
   }
 
   // 'overdue' é um status virtual: pending com due_date < hoje

@@ -41,6 +41,17 @@ const todayISO = () => new Date().toISOString().slice(0, 10)
 export default function Payments() {
   const toast = useToast()
 
+  // ── Unidades (para o filtro) ─────────────────────────────────────────────
+  const [units, setUnits] = useState([])
+
+  useEffect(() => {
+    apiFetch('/plans').then(d => {
+      const map = new Map()
+      d.plans.forEach(p => { if (!map.has(p.unit_id)) map.set(p.unit_id, { id: p.unit_id, name: p.unit_name }) })
+      setUnits([...map.values()])
+    }).catch(() => {})
+  }, [])
+
   // ── Mensalidades ───────────────────────────────────────────────────────────
   const [installments, setInstallments] = useState([])
   const [total,        setTotal]        = useState(0)
@@ -48,15 +59,23 @@ export default function Payments() {
   const [totalPages,   setTotalPages]   = useState(1)
   const [search,       setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [unitFilter,   setUnitFilter]   = useState('')
+  const [dateFrom,     setDateFrom]     = useState('')
+  const [dateTo,       setDateTo]       = useState('')
   const [loading,      setLoading]      = useState(false)
   const [listError,    setListError]    = useState('')
 
-  const fetchInstallments = useCallback(async (p, s, st) => {
+  const fetchInstallments = useCallback(async (p, filters = {}) => {
     setLoading(true)
     setListError('')
     try {
-      const params = new URLSearchParams({ page: p, search: s, status: st, limit: 30 })
-      const data   = await apiFetch(`/installments?${params}`)
+      const params = new URLSearchParams({ page: p, limit: 30 })
+      if (filters.search)    params.set('search', filters.search)
+      if (filters.status && filters.status !== 'all') params.set('status', filters.status)
+      if (filters.unit_id)   params.set('unit_id', filters.unit_id)
+      if (filters.dateFrom)  params.set('due_date_from', filters.dateFrom)
+      if (filters.dateTo)    params.set('due_date_to', filters.dateTo)
+      const data = await apiFetch(`/installments?${params}`)
       setInstallments(data.installments)
       setTotal(data.total)
       setPage(data.page)
@@ -69,12 +88,17 @@ export default function Payments() {
     }
   }, [])
 
-  useEffect(() => { fetchInstallments(1, '', 'all') }, [fetchInstallments])
+  function currentFilters() {
+    return { search, status: statusFilter, unit_id: unitFilter, dateFrom, dateTo }
+  }
+
+  useEffect(() => { fetchInstallments(1) }, [fetchInstallments])
 
   function handleSearch(e) {
     e.preventDefault()
-    fetchInstallments(1, search, statusFilter)
+    fetchInstallments(1, currentFilters())
   }
+
 
   // ── Painel de pagamento ────────────────────────────────────────────────────
   const [selected,     setSelected]     = useState(null)   // installment a pagar
@@ -116,7 +140,7 @@ export default function Payments() {
       setLastPayment({ installment: data.installment, payment: data.payment })
       setSelected(null)
       toast.success('Pagamento registrado com sucesso.')
-      fetchInstallments(page, search, statusFilter)
+      fetchInstallments(page, currentFilters())
       fetchHistory()
     } catch (e) {
       setPayError(e.message)
@@ -158,21 +182,31 @@ export default function Payments() {
       </div>
 
       {/* Filtros */}
-      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="flex-1 relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
-          <Input
-            placeholder="Pesquisar aluno"
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-3">
+      <form onSubmit={handleSearch} className="flex flex-col gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
+            <Input
+              placeholder="Pesquisar aluno"
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           <Select
-            className="flex-1 sm:w-44"
+            className="sm:w-44"
+            value={unitFilter}
+            onChange={(e) => { setUnitFilter(e.target.value); fetchInstallments(1, { ...currentFilters(), unit_id: e.target.value }) }}
+          >
+            <option value="">Todas as unidades</option>
+            {units.map(u => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </Select>
+          <Select
+            className="sm:w-44"
             value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); fetchInstallments(1, search, e.target.value) }}
+            onChange={(e) => { setStatusFilter(e.target.value); fetchInstallments(1, { ...currentFilters(), status: e.target.value }) }}
           >
             <option value="all">Todas as situações</option>
             <option value="pending">Em aberto</option>
@@ -180,7 +214,23 @@ export default function Payments() {
             <option value="paid">Pagas</option>
             <option value="cancelled">Canceladas</option>
           </Select>
-          <Button type="submit" variant="secondary">Pesquisar</Button>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 items-end">
+          <InputField label="Vencimento de" className="flex-1 sm:flex-initial">
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          </InputField>
+          <InputField label="Vencimento até" className="flex-1 sm:flex-initial">
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          </InputField>
+          <div className="flex gap-3">
+            <Button type="submit" variant="secondary">Pesquisar</Button>
+            {(search || unitFilter || statusFilter !== 'all' || dateFrom || dateTo) && (
+              <Button type="button" variant="ghost" onClick={() => {
+                setSearch(''); setUnitFilter(''); setStatusFilter('all'); setDateFrom(''); setDateTo('')
+                fetchInstallments(1)
+              }}>Limpar</Button>
+            )}
+          </div>
         </div>
       </form>
 
@@ -259,10 +309,10 @@ export default function Payments() {
             </span>
             <div className="flex gap-2">
               <Button size="sm" variant="secondary" disabled={page <= 1}
-                onClick={() => fetchInstallments(page - 1, search, statusFilter)}>Anterior</Button>
+                onClick={() => fetchInstallments(page - 1, currentFilters())}>Anterior</Button>
               <span className="px-3 py-1.5 text-xs bg-evolution-muted text-evolution border border-evolution-border rounded">{page}</span>
               <Button size="sm" variant="secondary" disabled={page >= totalPages}
-                onClick={() => fetchInstallments(page + 1, search, statusFilter)}>Próxima</Button>
+                onClick={() => fetchInstallments(page + 1, currentFilters())}>Próxima</Button>
             </div>
           </div>
 
