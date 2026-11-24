@@ -399,10 +399,10 @@ export default function Students() {
           {/* Backdrop mobile */}
           <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={closePanel} />
           <div className="
-            fixed inset-x-0 bottom-0 top-12 z-50 overflow-y-auto
+            fixed inset-x-0 bottom-0 top-[5rem] z-50 overflow-y-auto
             md:relative md:inset-auto md:z-auto
             w-full md:w-80 md:min-w-[300px]
-            bg-card border border-border rounded-t-lg md:rounded-lg p-6 self-start
+            bg-card border border-border rounded-t-lg md:rounded-lg p-6 pb-10 self-start
           ">
             {/* Fechar mobile */}
             <button

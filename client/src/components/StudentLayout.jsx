@@ -67,6 +67,11 @@ export default function StudentLayout({
             <Menu size={20} />
           </button>
         </div>
+        {breadcrumb && (
+          <div className="flex md:hidden px-4 py-2 border-b border-border bg-base">
+            <span className="text-xs text-tx-muted truncate">{breadcrumb.split(' / ').pop()}</span>
+          </div>
+        )}
 
         <PageHeader breadcrumb={breadcrumb} date={date} className="hidden md:flex" />
         <main className="flex-1 overflow-y-auto px-4 py-5 md:px-8 md:py-7">

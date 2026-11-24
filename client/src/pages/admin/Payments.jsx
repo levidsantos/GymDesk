@@ -209,8 +209,8 @@ export default function Payments() {
             <Thead>
               <Tr>
                 <Th>Aluno</Th>
-                <Th>Unidade / Plano</Th>
-                <Th>Competência</Th>
+                <Th className="hidden md:table-cell">Unidade / Plano</Th>
+                <Th className="hidden md:table-cell">Competência</Th>
                 <Th>Vencimento</Th>
                 <Th>Valor</Th>
                 <Th>Situação</Th>
@@ -229,13 +229,13 @@ export default function Payments() {
                     <Td>
                       <span className="font-medium text-tx-primary">{inst.student_name}</span>
                     </Td>
-                    <Td>
+                    <Td className="hidden md:table-cell">
                       <span className={`text-xs font-medium ${inst.unit_slug === 'evolution' ? 'text-evolution' : 'text-power'}`}>
                         {inst.unit_name}
                       </span>
                       <p className="text-xs text-tx-muted">{inst.plan_name}</p>
                     </Td>
-                    <Td>{fmtCompetence(inst.competence)}</Td>
+                    <Td className="hidden md:table-cell">{fmtCompetence(inst.competence)}</Td>
                     <Td className="text-tx-dim">{fmtDate(inst.due_date)}</Td>
                     <Td>{fmtPrice(inst.amount)}</Td>
                     <Td><Badge variant={badge.variant}>{badge.label}</Badge></Td>
@@ -293,7 +293,7 @@ export default function Payments() {
         )}
         <div className={`
           ${selected || lastPayment
-            ? 'fixed inset-x-0 bottom-0 top-12 z-50 overflow-y-auto md:relative md:inset-auto md:z-auto w-full'
+            ? 'fixed inset-x-0 bottom-0 top-[5rem] z-50 overflow-y-auto md:relative md:inset-auto md:z-auto w-full'
             : 'hidden md:block'
           }
           md:w-72 md:min-w-[260px] bg-card border border-border rounded-t-lg md:rounded-lg p-6 self-start
