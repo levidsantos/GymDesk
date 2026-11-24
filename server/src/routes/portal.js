@@ -84,7 +84,9 @@ router.get('/home', (req, res) => {
   const student = getStudentByAccount(db, req.accountId)
 
   if (!student) {
-    return res.json({ student: null, enrollment: null, finance: null, access: null })
+    const allUnits = db.prepare('SELECT slug, name, phone, email FROM units ORDER BY id').all()
+    const contacts = allUnits.map(u => ({ slug: u.slug, name: u.name, phone: u.phone, email: u.email }))
+    return res.json({ student: null, enrollment: null, finance: null, access: null, contacts })
   }
 
   const today = new Date().toISOString().slice(0, 10)
@@ -134,6 +136,15 @@ router.get('/home', (req, res) => {
     }
   }
 
+  let contacts = null
+  if (enrollment) {
+    const unit = db.prepare('SELECT phone, email FROM units WHERE slug = ?').get(enrollment.unit_slug)
+    contacts = unit ? [{ slug: enrollment.unit_slug, name: enrollment.unit_name, phone: unit.phone, email: unit.email }] : []
+  } else {
+    const allUnits = db.prepare('SELECT slug, name, phone, email FROM units ORDER BY id').all()
+    contacts = allUnits.map(u => ({ slug: u.slug, name: u.name, phone: u.phone, email: u.email }))
+  }
+
   res.json({
     student: { id: student.id, name: student.name, status: student.status },
     enrollment: enrollment ? {
@@ -149,6 +160,7 @@ router.get('/home', (req, res) => {
     } : null,
     finance,
     access,
+    contacts,
   })
 })
 

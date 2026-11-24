@@ -115,7 +115,7 @@ export default function StudentRules() {
           </p>
           <div className="border-t border-border pt-4">
             <p className="text-xs font-medium text-tx-dim uppercase tracking-wide mb-2">
-              Horário de funcionamento
+              {enrollment ? 'Seus horários de acesso' : 'Horário de funcionamento'}
             </p>
             <div className="space-y-1 text-sm text-tx-primary">
               <p>Segunda a sexta: <span className="text-tx-dim">05h às 21h</span></p>
@@ -151,16 +151,40 @@ export default function StudentRules() {
                 : 'Sua unidade de origem.'
             }
           </p>
-          <div className="border-t border-border pt-4">
-            <p className="text-xs font-medium text-tx-dim uppercase tracking-wide mb-2">
-              Horário de funcionamento
-            </p>
-            <div className="space-y-1 text-sm text-tx-primary">
-              <p>Segunda a sexta: <span className="text-tx-dim">05h às 21h</span></p>
-              <p>Sábado: <span className="text-tx-dim">07h às 13h</span></p>
-              <p>Domingo: <span className="text-tx-dim">08h às 12h</span></p>
+          {enrollment && isPower ? (
+            <>
+              <div className="border-t border-border pt-4">
+                <p className="text-xs font-medium text-tx-dim uppercase tracking-wide mb-2">
+                  Seus horários de acesso
+                </p>
+                <div className="space-y-1 text-sm text-tx-primary">
+                  <p>Segunda a sábado: <span className="text-tx-muted">sem acesso</span></p>
+                  <p>Domingo: <span className="text-tx-dim">08h às 12h</span></p>
+                </div>
+              </div>
+              <div className="border-t border-border pt-4 mt-4">
+                <p className="text-xs font-medium text-tx-muted uppercase tracking-wide mb-2">
+                  Horário geral da unidade
+                </p>
+                <div className="space-y-1 text-xs text-tx-muted">
+                  <p>Segunda a sexta: 05h às 21h</p>
+                  <p>Sábado: 07h às 13h</p>
+                  <p>Domingo: 08h às 12h</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-medium text-tx-dim uppercase tracking-wide mb-2">
+                {enrollment ? 'Seus horários de acesso' : 'Horário de funcionamento'}
+              </p>
+              <div className="space-y-1 text-sm text-tx-primary">
+                <p>Segunda a sexta: <span className="text-tx-dim">05h às 21h</span></p>
+                <p>Sábado: <span className="text-tx-dim">07h às 13h</span></p>
+                <p>Domingo: <span className="text-tx-dim">08h às 12h</span></p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

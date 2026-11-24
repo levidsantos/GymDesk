@@ -19,8 +19,8 @@ function nextId() { return _nextId++ }
 
 export function createDemoData() {
   const units = [
-    { id: 1, slug: 'power', name: 'Muscle Power' },
-    { id: 2, slug: 'evolution', name: 'Muscle Evolution' },
+    { id: 1, slug: 'power', name: 'Muscle Power', phone: '5511900001111', email: 'contato@musclepower.com.br' },
+    { id: 2, slug: 'evolution', name: 'Muscle Evolution', phone: '5511900002222', email: 'contato@muscleevolution.com.br' },
   ]
 
   const plans = [

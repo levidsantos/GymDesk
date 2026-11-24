@@ -6,6 +6,7 @@ import Button from '../../components/Button'
 import Badge from '../../components/Badge'
 import Alert from '../../components/Alert'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/Table'
+import { useToast } from '../../components/Toast'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,19 @@ const todayISO = () => new Date().toISOString().slice(0, 10)
 // ── Componente ───────────────────────────────────────────────────────────────
 
 export default function Payments() {
+  const toast = useToast()
+
+  // ── Unidades (para o filtro) ─────────────────────────────────────────────
+  const [units, setUnits] = useState([])
+
+  useEffect(() => {
+    apiFetch('/plans').then(d => {
+      const map = new Map()
+      d.plans.forEach(p => { if (!map.has(p.unit_id)) map.set(p.unit_id, { id: p.unit_id, name: p.unit_name }) })
+      setUnits([...map.values()])
+    }).catch(() => {})
+  }, [])
+
   // ── Mensalidades ───────────────────────────────────────────────────────────
   const [installments, setInstallments] = useState([])
   const [total,        setTotal]        = useState(0)
@@ -45,15 +59,23 @@ export default function Payments() {
   const [totalPages,   setTotalPages]   = useState(1)
   const [search,       setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [unitFilter,   setUnitFilter]   = useState('')
+  const [dateFrom,     setDateFrom]     = useState('')
+  const [dateTo,       setDateTo]       = useState('')
   const [loading,      setLoading]      = useState(false)
   const [listError,    setListError]    = useState('')
 
-  const fetchInstallments = useCallback(async (p, s, st) => {
+  const fetchInstallments = useCallback(async (p, filters = {}) => {
     setLoading(true)
     setListError('')
     try {
-      const params = new URLSearchParams({ page: p, search: s, status: st, limit: 30 })
-      const data   = await apiFetch(`/installments?${params}`)
+      const params = new URLSearchParams({ page: p, limit: 12 })
+      if (filters.search)    params.set('search', filters.search)
+      if (filters.status && filters.status !== 'all') params.set('status', filters.status)
+      if (filters.unit_id)   params.set('unit_id', filters.unit_id)
+      if (filters.dateFrom)  params.set('due_date_from', filters.dateFrom)
+      if (filters.dateTo)    params.set('due_date_to', filters.dateTo)
+      const data = await apiFetch(`/installments?${params}`)
       setInstallments(data.installments)
       setTotal(data.total)
       setPage(data.page)
@@ -66,12 +88,17 @@ export default function Payments() {
     }
   }, [])
 
-  useEffect(() => { fetchInstallments(1, '', 'all') }, [fetchInstallments])
+  function currentFilters() {
+    return { search, status: statusFilter, unit_id: unitFilter, dateFrom, dateTo }
+  }
+
+  useEffect(() => { fetchInstallments(1) }, [fetchInstallments])
 
   function handleSearch(e) {
     e.preventDefault()
-    fetchInstallments(1, search, statusFilter)
+    fetchInstallments(1, currentFilters())
   }
+
 
   // ── Painel de pagamento ────────────────────────────────────────────────────
   const [selected,     setSelected]     = useState(null)   // installment a pagar
@@ -112,8 +139,9 @@ export default function Payments() {
       })
       setLastPayment({ installment: data.installment, payment: data.payment })
       setSelected(null)
-      fetchInstallments(page, search, statusFilter)
-      fetchHistory()
+      toast.success('Pagamento registrado com sucesso.')
+      fetchInstallments(page, currentFilters())
+      fetchHistory(historyPage, historyFilters())
     } catch (e) {
       setPayError(e.message)
     } finally {
@@ -122,25 +150,44 @@ export default function Payments() {
   }
 
   // ── Histórico ──────────────────────────────────────────────────────────────
-  const [history,      setHistory]      = useState([])
-  const [historyError, setHistoryError] = useState('')
+  const [history,          setHistory]          = useState([])
+  const [historyTotal,     setHistoryTotal]     = useState(0)
+  const [historyPage,      setHistoryPage]      = useState(1)
+  const [historyPages,     setHistoryPages]     = useState(1)
+  const [historyError,     setHistoryError]     = useState('')
+  const [historySearch,    setHistorySearch]    = useState('')
+  const [historyUnit,      setHistoryUnit]      = useState('')
+  const [historyDateFrom,  setHistoryDateFrom]  = useState('')
+  const [historyDateTo,    setHistoryDateTo]    = useState('')
 
-  const fetchHistory = useCallback(async () => {
+  const fetchHistory = useCallback(async (p = 1, filters = {}) => {
     try {
-      const data = await apiFetch('/payments?limit=10')
+      const params = new URLSearchParams({ page: p, limit: 12 })
+      if (filters.search)   params.set('search', filters.search)
+      if (filters.unit_id)  params.set('unit_id', filters.unit_id)
+      if (filters.dateFrom) params.set('paid_at_from', filters.dateFrom)
+      if (filters.dateTo)   params.set('paid_at_to', filters.dateTo)
+      const data = await apiFetch(`/payments?${params}`)
       setHistory(data.payments)
+      setHistoryTotal(data.total)
+      setHistoryPage(data.page)
+      setHistoryPages(data.totalPages)
     } catch (e) {
       setHistoryError(e.message)
     }
   }, [])
+
+  function historyFilters() {
+    return { search: historySearch, unit_id: historyUnit, dateFrom: historyDateFrom, dateTo: historyDateTo }
+  }
 
   useEffect(() => { fetchHistory() }, [fetchHistory])
 
   // ── Resumo financeiro (totais do backend, não apenas da página) ─────────
   const [summary, setSummary] = useState({ overdue: 0, pending: 0, paid: 0 })
 
-  const rangeStart = total === 0 ? 0 : (page - 1) * 30 + 1
-  const rangeEnd   = Math.min(page * 30, total)
+  const rangeStart = total === 0 ? 0 : (page - 1) * 12 + 1
+  const rangeEnd   = Math.min(page * 12, total)
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -154,29 +201,59 @@ export default function Payments() {
       </div>
 
       {/* Filtros */}
-      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="flex-1 relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
-          <Input
-            placeholder="Pesquisar aluno"
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <form onSubmit={handleSearch} className="mb-6 space-y-3">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
+            <Input
+              placeholder="Pesquisar aluno"
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="md:w-44">
+            <Select
+              value={unitFilter}
+              onChange={(e) => { setUnitFilter(e.target.value); fetchInstallments(1, { ...currentFilters(), unit_id: e.target.value }) }}
+            >
+              <option value="">Todas as unidades</option>
+              {units.map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="md:w-44">
+            <Select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); fetchInstallments(1, { ...currentFilters(), status: e.target.value }) }}
+            >
+              <option value="all">Todas as situações</option>
+              <option value="pending">Em aberto</option>
+              <option value="overdue">Em atraso</option>
+              <option value="paid">Pagas</option>
+              <option value="cancelled">Canceladas</option>
+            </Select>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <Select
-            className="flex-1 sm:w-44"
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); fetchInstallments(1, search, e.target.value) }}
-          >
-            <option value="all">Todas as situações</option>
-            <option value="pending">Em aberto</option>
-            <option value="overdue">Em atraso</option>
-            <option value="paid">Pagas</option>
-            <option value="cancelled">Canceladas</option>
-          </Select>
-          <Button type="submit" variant="secondary">Pesquisar</Button>
+        <div className="flex flex-col sm:flex-row gap-3 items-end">
+          <div className="flex gap-3 flex-1 sm:flex-initial">
+            <InputField label="Vencimento de" className="flex-1 sm:w-40">
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </InputField>
+            <InputField label="até" className="flex-1 sm:w-40">
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </InputField>
+          </div>
+          <div className="flex gap-3">
+            <Button type="submit" variant="secondary">Pesquisar</Button>
+            {(search || unitFilter || statusFilter !== 'all' || dateFrom || dateTo) && (
+              <Button type="button" variant="ghost" onClick={() => {
+                setSearch(''); setUnitFilter(''); setStatusFilter('all'); setDateFrom(''); setDateTo('')
+                fetchInstallments(1)
+              }}>Limpar</Button>
+            )}
+          </div>
         </div>
       </form>
 
@@ -205,8 +282,8 @@ export default function Payments() {
             <Thead>
               <Tr>
                 <Th>Aluno</Th>
-                <Th>Unidade / Plano</Th>
-                <Th>Competência</Th>
+                <Th className="hidden md:table-cell">Unidade / Plano</Th>
+                <Th className="hidden md:table-cell">Competência</Th>
                 <Th>Vencimento</Th>
                 <Th>Valor</Th>
                 <Th>Situação</Th>
@@ -225,13 +302,13 @@ export default function Payments() {
                     <Td>
                       <span className="font-medium text-tx-primary">{inst.student_name}</span>
                     </Td>
-                    <Td>
+                    <Td className="hidden md:table-cell">
                       <span className={`text-xs font-medium ${inst.unit_slug === 'evolution' ? 'text-evolution' : 'text-power'}`}>
                         {inst.unit_name}
                       </span>
                       <p className="text-xs text-tx-muted">{inst.plan_name}</p>
                     </Td>
-                    <Td>{fmtCompetence(inst.competence)}</Td>
+                    <Td className="hidden md:table-cell">{fmtCompetence(inst.competence)}</Td>
                     <Td className="text-tx-dim">{fmtDate(inst.due_date)}</Td>
                     <Td>{fmtPrice(inst.amount)}</Td>
                     <Td><Badge variant={badge.variant}>{badge.label}</Badge></Td>
@@ -255,30 +332,98 @@ export default function Payments() {
             </span>
             <div className="flex gap-2">
               <Button size="sm" variant="secondary" disabled={page <= 1}
-                onClick={() => fetchInstallments(page - 1, search, statusFilter)}>Anterior</Button>
+                onClick={() => fetchInstallments(page - 1, currentFilters())}>Anterior</Button>
               <span className="px-3 py-1.5 text-xs bg-evolution-muted text-evolution border border-evolution-border rounded">{page}</span>
               <Button size="sm" variant="secondary" disabled={page >= totalPages}
-                onClick={() => fetchInstallments(page + 1, search, statusFilter)}>Próxima</Button>
+                onClick={() => fetchInstallments(page + 1, currentFilters())}>Próxima</Button>
             </div>
           </div>
 
           {/* Histórico de pagamentos */}
-          <div className="bg-card border border-border rounded-lg p-5 mt-6">
-            <h2 className="text-sm font-semibold text-tx-primary mb-3">Histórico de pagamentos</h2>
-            {historyError && <p className="text-xs text-danger">{historyError}</p>}
-            {history.length === 0 ? (
-              <p className="text-sm text-tx-muted">Nenhum pagamento registrado.</p>
-            ) : (
-              <div className="space-y-2 text-sm text-tx-dim">
-                {history.map((p) => (
-                  <p key={p.id}>
-                    {fmtCompetence(p.competence)} · {p.student_name} ·{' '}
-                    Recebido em {fmtDate(p.paid_at)} · {fmtPrice(p.amount_paid)}
-                    {p.notes && ` · ${p.notes}`}
-                  </p>
-                ))}
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold text-tx-primary mb-4">Histórico de pagamentos</h2>
+
+            <form onSubmit={(e) => { e.preventDefault(); fetchHistory(1, historyFilters()) }}
+              className="mb-4 space-y-3">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-tx-muted" />
+                  <Input placeholder="Pesquisar aluno" className="pl-9"
+                    value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
+                </div>
+                <div className="md:w-44">
+                  <Select value={historyUnit}
+                    onChange={(e) => { setHistoryUnit(e.target.value); fetchHistory(1, { ...historyFilters(), unit_id: e.target.value }) }}>
+                    <option value="">Todas as unidades</option>
+                    {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </Select>
+                </div>
               </div>
-            )}
+              <div className="flex flex-col sm:flex-row gap-3 items-end">
+                <div className="flex gap-3 flex-1 sm:flex-initial">
+                  <InputField label="Recebido de" className="flex-1 sm:w-40">
+                    <Input type="date" value={historyDateFrom} onChange={(e) => setHistoryDateFrom(e.target.value)} />
+                  </InputField>
+                  <InputField label="até" className="flex-1 sm:w-40">
+                    <Input type="date" value={historyDateTo} onChange={(e) => setHistoryDateTo(e.target.value)} />
+                  </InputField>
+                </div>
+                <div className="flex gap-3">
+                  <Button type="button" variant="secondary"
+                    onClick={() => fetchHistory(1, historyFilters())}>Pesquisar</Button>
+                  {(historySearch || historyUnit || historyDateFrom || historyDateTo) && (
+                    <Button type="button" variant="ghost" onClick={() => {
+                      setHistorySearch(''); setHistoryUnit(''); setHistoryDateFrom(''); setHistoryDateTo('')
+                      fetchHistory(1)
+                    }}>Limpar</Button>
+                  )}
+                </div>
+              </div>
+            </form>
+
+            {historyError && <Alert variant="danger" className="mb-4">{historyError}</Alert>}
+
+            <Table>
+              <Thead>
+                <Tr>
+                  <Th>Aluno</Th>
+                  <Th className="hidden md:table-cell">Unidade</Th>
+                  <Th>Competência</Th>
+                  <Th>Recebido em</Th>
+                  <Th>Valor</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {history.length === 0 ? (
+                  <Tr><Td colSpan={5} className="text-center text-tx-muted py-8">Nenhum pagamento encontrado.</Td></Tr>
+                ) : history.map((p) => (
+                  <Tr key={p.id}>
+                    <Td><span className="font-medium text-tx-primary">{p.student_name}</span></Td>
+                    <Td className="hidden md:table-cell">
+                      <span className={`text-xs font-medium ${p.unit_slug === 'evolution' ? 'text-evolution' : 'text-power'}`}>
+                        {p.unit_name}
+                      </span>
+                    </Td>
+                    <Td>{fmtCompetence(p.competence)}</Td>
+                    <Td className="text-tx-dim">{fmtDate(p.paid_at)}</Td>
+                    <Td>{fmtPrice(p.amount_paid)}</Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+
+            <div className="flex items-center justify-between mt-4">
+              <span className="text-xs text-tx-muted">
+                {historyTotal === 0 ? '0 pagamentos' : `${(historyPage - 1) * 12 + 1}–${Math.min(historyPage * 12, historyTotal)} de ${historyTotal}`}
+              </span>
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" disabled={historyPage <= 1}
+                  onClick={() => fetchHistory(historyPage - 1, historyFilters())}>Anterior</Button>
+                <span className="px-3 py-1.5 text-xs bg-evolution-muted text-evolution border border-evolution-border rounded">{historyPage}</span>
+                <Button size="sm" variant="secondary" disabled={historyPage >= historyPages}
+                  onClick={() => fetchHistory(historyPage + 1, historyFilters())}>Próxima</Button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -289,7 +434,7 @@ export default function Payments() {
         )}
         <div className={`
           ${selected || lastPayment
-            ? 'fixed inset-x-0 bottom-0 top-12 z-50 overflow-y-auto md:relative md:inset-auto md:z-auto w-full'
+            ? 'fixed inset-x-0 bottom-0 top-[5rem] z-50 overflow-y-auto md:relative md:inset-auto md:z-auto w-full'
             : 'hidden md:block'
           }
           md:w-72 md:min-w-[260px] bg-card border border-border rounded-t-lg md:rounded-lg p-6 self-start

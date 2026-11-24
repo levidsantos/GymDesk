@@ -6,6 +6,7 @@ import Button from '../../components/Button'
 import Badge from '../../components/Badge'
 import Alert from '../../components/Alert'
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/Table'
+import { useToast } from '../../components/Toast'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ function fmtPrice(value) {
 // ── Componente ───────────────────────────────────────────────────────────────
 
 export default function Students() {
+  const toast = useToast()
+
   // ── Planos (carregados uma vez) ────────────────────────────────────────────
   const [allPlans, setAllPlans] = useState([])
 
@@ -41,6 +44,7 @@ export default function Students() {
   const [statusFilter, setStatusFilter] = useState('active')
   const [loading,      setLoading]      = useState(false)
   const [listError,    setListError]    = useState('')
+  const [inactiveCount, setInactiveCount] = useState(0)
 
   const fetchStudents = useCallback(async (p, s, st) => {
     setLoading(true)
@@ -61,6 +65,12 @@ export default function Students() {
 
   useEffect(() => { fetchStudents(1, '', 'active') }, [fetchStudents])
 
+  useEffect(() => {
+    apiFetch('/students?status=inactive&limit=1')
+      .then(d => setInactiveCount(d.total))
+      .catch(() => {})
+  }, [students])
+
   function handleSearch(e) {
     e.preventDefault()
     fetchStudents(1, search, statusFilter)
@@ -76,7 +86,6 @@ export default function Students() {
   const [selected,    setSelected]    = useState(null)
   const [studentForm, setStudentForm] = useState(emptyStudentForm)
   const [stuError,    setStuError]    = useState('')
-  const [stuSuccess,  setStuSuccess]  = useState('')
   const [stuSaving,   setStuSaving]   = useState(false)
   const [inactivating, setInactivating] = useState(false)
   const [reactivating, setReactivating] = useState(false)
@@ -92,7 +101,6 @@ export default function Students() {
   // ── Painel lateral — conta de acesso ────────────────────────────────────────
   const [accountPassword, setAccountPassword] = useState('')
   const [accountError,    setAccountError]    = useState('')
-  const [accountSuccess,  setAccountSuccess]  = useState('')
   const [accountSaving,   setAccountSaving]   = useState(false)
 
   const plansForUnit = allPlans.filter(p => String(p.unit_id) === String(enrollForm.unit_id))
@@ -108,23 +116,20 @@ export default function Students() {
 
   function openNew() {
     setStudentForm(emptyStudentForm)
-    setStuError(''); setStuSuccess('')
+    setStuError('')
     setSelected(null)
     setActiveEnrollment(null)
     setShowEnrollForm(false)
     setEnrollForm(emptyEnrollForm)
     setEnrollError('')
-    setAccountPassword(''); setAccountError(''); setAccountSuccess('')
-    setPanelMode('new')
+    setAccountPassword(''); setAccountError('');     setPanelMode('new')
   }
 
   async function openEdit(student) {
-    setStuError(''); setStuSuccess('')
-    setEnrollError('')
+    setStuError(''); setEnrollError('')
     setShowEnrollForm(false)
     setEnrollForm(emptyEnrollForm)
-    setAccountPassword(''); setAccountError(''); setAccountSuccess('')
-    setStudentForm({
+    setAccountPassword(''); setAccountError('');     setStudentForm({
       name:       student.name       ?? '',
       email:      student.email      ?? '',
       phone:      student.phone      ?? '',
@@ -139,13 +144,11 @@ export default function Students() {
     setPanelMode(null)
     setSelected(null)
     setStudentForm(emptyStudentForm)
-    setStuError(''); setStuSuccess('')
-    setActiveEnrollment(null)
+    setStuError(''); setActiveEnrollment(null)
     setShowEnrollForm(false)
     setEnrollForm(emptyEnrollForm)
     setEnrollError('')
-    setAccountPassword(''); setAccountError(''); setAccountSuccess('')
-  }
+    setAccountPassword(''); setAccountError('');   }
 
   function setStuField(f, v) { setStudentForm(p => ({ ...p, [f]: v })) }
   function setEnrField(f, v) {
@@ -160,8 +163,7 @@ export default function Students() {
 
   async function handleSaveStudent(e) {
     e.preventDefault()
-    setStuError(''); setStuSuccess('')
-    setStuSaving(true)
+    setStuError(''); setStuSaving(true)
     try {
       const body = {
         name:       studentForm.name.trim(),
@@ -170,14 +172,14 @@ export default function Students() {
         birth_date: studentForm.birth_date        || null,
       }
       if (panelMode === 'new') {
-        await apiFetch('/students', { method: 'POST', body: JSON.stringify(body) })
-        setStuSuccess('Aluno cadastrado com sucesso.')
-        setStudentForm(emptyStudentForm)
+        const data = await apiFetch('/students', { method: 'POST', body: JSON.stringify(body) })
+        toast.success('Aluno cadastrado com sucesso.')
         fetchStudents(1, search, statusFilter)
+        await openEdit(data.student)
       } else {
         const data = await apiFetch(`/students/${selected.id}`, { method: 'PUT', body: JSON.stringify(body) })
         setSelected(data.student)
-        setStuSuccess('Dados atualizados com sucesso.')
+        toast.success('Dados atualizados com sucesso.')
         fetchStudents(page, search, statusFilter)
       }
     } catch (e) {
@@ -190,11 +192,14 @@ export default function Students() {
   // ── Inativar aluno ─────────────────────────────────────────────────────────
 
   async function handleInactivateStudent() {
-    if (!window.confirm(`Inativar ${selected.name}? O histórico financeiro será preservado.`)) return
+    if (!window.confirm(`Inativar ${selected.name}?\n\nA matrícula ativa será encerrada automaticamente e mensalidades futuras ainda não pagas serão canceladas.\n\nO histórico financeiro será preservado.`)) return
     setInactivating(true); setStuError('')
     try {
       await apiFetch(`/students/${selected.id}/inactivate`, { method: 'PATCH' })
-      closePanel()
+      const data = await apiFetch(`/students/${selected.id}`)
+      setSelected(data.student)
+      setActiveEnrollment(null)
+      toast.success('Aluno inativado com sucesso.')
       fetchStudents(page, search, statusFilter)
     } catch (e) {
       setStuError(e.message)
@@ -211,7 +216,7 @@ export default function Students() {
     try {
       const data = await apiFetch(`/students/${selected.id}/reactivate`, { method: 'PATCH' })
       setSelected(data.student)
-      setStuSuccess('Aluno reativado com sucesso.')
+      toast.success('Aluno reativado com sucesso.')
       fetchStudents(page, search, statusFilter)
     } catch (e) {
       setStuError(e.message)
@@ -238,6 +243,7 @@ export default function Students() {
       setShowEnrollForm(false)
       setEnrollForm(emptyEnrollForm)
       await loadActiveEnrollment(selected.id)
+      toast.success('Matrícula registrada com sucesso.')
     } catch (e) {
       setEnrollError(e.message)
     } finally {
@@ -245,14 +251,15 @@ export default function Students() {
     }
   }
 
-  // ── Inativar matrícula ─────────────────────────────────────────────────────
+  // ── Cancelar matrícula ──────────────────────────────────────────────────────
 
   async function handleInactivateEnrollment() {
-    if (!window.confirm('Inativar esta matrícula? Mensalidades futuras serão canceladas.')) return
+    if (!window.confirm('Cancelar esta matrícula? Mensalidades futuras ainda não pagas serão canceladas. O cadastro do aluno permanecerá ativo.')) return
     setEnrollInactivating(true); setEnrollError('')
     try {
       await apiFetch(`/enrollments/${activeEnrollment.id}/inactivate`, { method: 'PATCH' })
       await loadActiveEnrollment(selected.id)
+      toast.success('Matrícula cancelada com sucesso.')
     } catch (e) {
       setEnrollError(e.message)
     } finally {
@@ -264,14 +271,13 @@ export default function Students() {
 
   async function handleCreateAccount(e) {
     e.preventDefault()
-    setAccountError(''); setAccountSuccess('')
-    setAccountSaving(true)
+    setAccountError('');     setAccountSaving(true)
     try {
       await apiFetch('/accounts', {
         method: 'POST',
         body: JSON.stringify({ student_id: selected.id, password: accountPassword }),
       })
-      setAccountSuccess('Conta criada com sucesso. O aluno deverá alterar a senha no primeiro acesso.')
+      toast.success('Conta criada com sucesso. O aluno deverá alterar a senha no primeiro acesso.')
       setAccountPassword('')
       const data = await apiFetch(`/students/${selected.id}`)
       setSelected(data.student)
@@ -322,7 +328,7 @@ export default function Students() {
                 onChange={(e) => handleStatusFilter(e.target.value)}
               >
                 <option value="active">Ativos</option>
-                <option value="inactive">Inativos</option>
+                <option value="inactive">Inativos{inactiveCount > 0 ? ` (${inactiveCount})` : ''}</option>
                 <option value="all">Todos</option>
               </Select>
               <Button type="submit" variant="secondary">Pesquisar</Button>
@@ -393,10 +399,10 @@ export default function Students() {
           {/* Backdrop mobile */}
           <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={closePanel} />
           <div className="
-            fixed inset-x-0 bottom-0 top-12 z-50 overflow-y-auto
+            fixed inset-x-0 bottom-0 top-[5rem] z-50 overflow-y-auto
             md:relative md:inset-auto md:z-auto
             w-full md:w-80 md:min-w-[300px]
-            bg-card border border-border rounded-t-lg md:rounded-lg p-6 self-start
+            bg-card border border-border rounded-t-lg md:rounded-lg p-6 pb-10 self-start
           ">
             {/* Fechar mobile */}
             <button
@@ -410,10 +416,22 @@ export default function Students() {
             <h2 className="text-base font-semibold text-tx-primary mb-1">
               {panelMode === 'new' ? 'Cadastrar aluno' : 'Editar aluno'}
             </h2>
-            <p className="text-xs text-tx-muted mb-5">Dados cadastrais do aluno.</p>
+            <p className="text-xs text-tx-muted mb-3">Dados cadastrais do aluno.</p>
+
+            {panelMode === 'edit' && selected && (
+              <div className="flex flex-wrap gap-2 mb-5">
+                <Badge variant="success">Cadastro</Badge>
+                <Badge variant={selected.account_id ? 'success' : 'neutral'}>
+                  {selected.account_id ? 'Conta criada' : 'Sem conta'}
+                </Badge>
+                <Badge variant={activeEnrollment ? 'success' : 'neutral'}>
+                  {activeEnrollment ? 'Matrícula ativa' : 'Sem matrícula'}
+                </Badge>
+              </div>
+            )}
+
 
             {stuError   && <Alert variant="danger"  className="mb-4">{stuError}</Alert>}
-            {stuSuccess && <Alert variant="success" className="mb-4">{stuSuccess}</Alert>}
 
             <form onSubmit={handleSaveStudent} className="flex flex-col gap-4">
               <InputField label="Nome completo">
@@ -468,7 +486,6 @@ export default function Students() {
                 <h3 className="text-sm font-semibold text-tx-primary mb-4">Conta de acesso</h3>
 
                 {accountError   && <Alert variant="danger"  className="mb-4">{accountError}</Alert>}
-                {accountSuccess && <Alert variant="success" className="mb-4">{accountSuccess}</Alert>}
 
                 {selected?.account_id ? (
                   <p className="text-xs text-tx-muted">
@@ -529,7 +546,7 @@ export default function Students() {
                     <Button variant="secondary"
                       className="w-full text-power border-power/30 hover:bg-power-muted"
                       onClick={handleInactivateEnrollment} disabled={enrollInactivating}>
-                      {enrollInactivating ? 'Inativando...' : 'Inativar matrícula'}
+                      {enrollInactivating ? 'Cancelando...' : 'Cancelar matrícula'}
                     </Button>
                     <p className="text-xs text-tx-muted text-center">Mensalidades futuras serão canceladas.</p>
                   </div>

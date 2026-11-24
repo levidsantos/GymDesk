@@ -443,7 +443,7 @@ route('POST', '/accounts', (body) => {
 
 route('GET', '/installments', (_body, query) => {
   const t = today()
-  const { search = '', status = 'all', unit_id, page = '1', limit = '30' } = query
+  const { search = '', status = 'all', unit_id, due_date_from, due_date_to, page = '1', limit = '30' } = query
   const pageNum = Math.max(1, parseInt(page) || 1)
   const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 30))
 
@@ -459,6 +459,8 @@ route('GET', '/installments', (_body, query) => {
     items = items.filter(i => i.student_name.toLowerCase().includes(term))
   }
   if (unit_id) items = items.filter(i => i.unit_id === Number(unit_id))
+  if (due_date_from) items = items.filter(i => i.due_date >= due_date_from)
+  if (due_date_to) items = items.filter(i => i.due_date <= due_date_to)
   if (status === 'overdue') items = items.filter(i => i.status === 'pending' && i.due_date < t)
   else if (status !== 'all') items = items.filter(i => i.status === status)
 
@@ -515,11 +517,11 @@ route('POST', '/installments/:id/pay', (body, _query, params) => {
 // ── GET /payments ───────────────────────────────────────────────────────────
 
 route('GET', '/payments', (_body, query) => {
-  const { page = '1', limit = '30' } = query
+  const { search = '', unit_id, paid_at_from, paid_at_to, page = '1', limit = '15' } = query
   const pageNum = Math.max(1, parseInt(page) || 1)
-  const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 30))
+  const pageSize = Math.min(100, Math.max(1, parseInt(limit) || 15))
 
-  const items = db.payments.map(p => {
+  let items = db.payments.map(p => {
     const inst = db.installments.find(i => i.id === p.installment_id)
     const e = db.enrollments.find(en => en.id === inst.enrollment_id)
     const s = db.students.find(st => st.id === e.student_id)
@@ -527,9 +529,19 @@ route('GET', '/payments', (_body, query) => {
     return {
       id: p.id, installment_id: p.installment_id, paid_at: p.paid_at, amount_paid: p.amount_paid, notes: p.notes,
       competence: inst.competence, due_date: inst.due_date, student_name: s.name, unit_name: plan.unit_name, unit_slug: plan.unit_slug, plan_name: plan.name,
+      unit_id: plan.unit_id,
     }
-  }).sort((a, b) => b.paid_at.localeCompare(a.paid_at))
+  })
 
+  if (search.trim()) {
+    const term = search.trim().toLowerCase()
+    items = items.filter(i => i.student_name.toLowerCase().includes(term))
+  }
+  if (unit_id) items = items.filter(i => i.unit_id === Number(unit_id))
+  if (paid_at_from) items = items.filter(i => i.paid_at >= paid_at_from)
+  if (paid_at_to) items = items.filter(i => i.paid_at <= paid_at_to)
+
+  items.sort((a, b) => b.paid_at.localeCompare(a.paid_at))
   const total = items.length
   const start = (pageNum - 1) * pageSize
   return ok({ payments: items.slice(start, start + pageSize), total, page: pageNum, totalPages: Math.ceil(total / pageSize) })
@@ -604,7 +616,10 @@ route('GET', '/portal/home', () => {
   expireMaturedEnrollments()
 
   const student = db.students.find(s => s.account_id === currentAccount.id)
-  if (!student) return ok({ student: null, enrollment: null, finance: null, access: null })
+  if (!student) {
+    const contacts = db.units.map(u => ({ slug: u.slug, name: u.name, phone: u.phone, email: u.email }))
+    return ok({ student: null, enrollment: null, finance: null, access: null, contacts })
+  }
 
   const t = today()
   const enrollment = getActiveEnrollment(student.id)
@@ -632,7 +647,15 @@ route('GET', '/portal/home', () => {
     }
   }
 
-  return ok({ student: { id: student.id, name: student.name, status: student.status }, enrollment: enrollmentData, finance, access })
+  let contacts
+  if (enrollment) {
+    const unit = db.units.find(u => u.slug === enrollmentData.unit_slug)
+    contacts = unit ? [{ slug: unit.slug, name: unit.name, phone: unit.phone, email: unit.email }] : []
+  } else {
+    contacts = db.units.map(u => ({ slug: u.slug, name: u.name, phone: u.phone, email: u.email }))
+  }
+
+  return ok({ student: { id: student.id, name: student.name, status: student.status }, enrollment: enrollmentData, finance, access, contacts })
 })
 
 // ── GET /portal/finance ─────────────────────────────────────────────────────
